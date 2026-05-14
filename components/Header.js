@@ -15,17 +15,38 @@ import {
 
 export default function Header({ title = "Dashboard", children }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
+    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
+    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
+  ]);
+  
   const menuRef = useRef(null);
+  const notifRef = useRef(null);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
       }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const markAsRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
@@ -44,16 +65,56 @@ export default function Header({ title = "Dashboard", children }) {
           </div>
 
           {/* Notifications */}
-          <button
-            type="button"
-            className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-              3
-            </span>
-          </button>
+          <div className="relative" ref={notifRef}>
+            <button
+              type="button"
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
+              aria-label="Notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5">
+                <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
+                  <button 
+                    onClick={markAllAsRead}
+                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.id} 
+                        onClick={() => markAsRead(n.id)}
+                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                            {n.text}
+                          </p>
+                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        </div>
+                        <span className="text-[10px] text-slate-400">{n.time}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Credits - Desktop */}
           <span className="hidden items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm sm:inline-flex">
