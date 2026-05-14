@@ -277,18 +277,18 @@ export default function NewCampaignPage() {
       }
 
       // Progress animation steps
-      const progressSteps = [
-        { phase: 1, progress: 25, delay: 2000 }, // Analyzing
-        { phase: 2, progress: 50, delay: 2000 }, // Extracting
-      ];
+      // Step 1 (Analyzing): 0-25% - 2 seconds 
+      setProcessingPhase(1);
+      setProgress(25);
+      await new Promise(r => setTimeout(r, 2000));
 
-      for (const stepInfo of progressSteps) {
-        setProcessingPhase(stepInfo.phase);
-        setProgress(stepInfo.progress);
-        await new Promise(r => setTimeout(r, stepInfo.delay));
-      }
+      // Step 2 (Extracting): 25-50% - 2 seconds  
+      setProcessingPhase(2);
+      setProgress(50);
+      await new Promise(r => setTimeout(r, 2000));
 
-      setProcessingPhase(3); // Generating ad copy
+      // Step 3 (Generating copy): 50-75% - wait for API 
+      setProcessingPhase(3);
       setProgress(75);
 
       const res = await fetch("/api/generate", {
@@ -319,24 +319,27 @@ export default function NewCampaignPage() {
         setProcessingPhase(4);
         setProgress(90);
         
-        try {
-          const imgRes = await fetch("/api/generate-images", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              productTitle: data.campaign.title,
-              tone: tone,
-              platform: selectedPlatforms.join(", "),
-            }),
-            signal: controller.signal,
-          });
-          const imgData = await imgRes.json();
-          if (imgData.success && imgData.images) {
-            setGeneratedImages(imgData.images);
-          }
-        } catch (imgErr) {
-          console.error("Image generation failed:", imgErr);
-        }
+        // Start image generation but don't let it block the 3s animation if it's faster, 
+        // or wait for it if it's slower. Actually the user said "75-90% - 3 seconds".
+        const imgPromise = fetch("/api/generate-images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productTitle: data.campaign.title,
+            tone: tone,
+            platform: selectedPlatforms.join(", "),
+          }),
+          signal: controller.signal,
+        }).then(r => r.json()).catch(err => ({ success: false, error: err }));
+
+        await Promise.all([
+          imgPromise.then(imgData => {
+            if (imgData.success && imgData.images) {
+              setGeneratedImages(imgData.images);
+            }
+          }),
+          new Promise(r => setTimeout(r, 3000))
+        ]);
 
         // Step 5 (Finalizing): 90-100% - 1 second
         setProcessingPhase(5);
@@ -347,10 +350,12 @@ export default function NewCampaignPage() {
         setFavorites({});
         setSelectedAds({});
         setStep(4); // Move to results
+      } else {
+        throw new Error("API returned success: false or missing campaign data");
       }
     } catch (error) {
       console.error('Error:', error);
-      // Still proceed with fallback data if needed or show error
+      // Still proceed with fallback data as requested in FIX 2
       setCampaignData(fallbackData);
       setStep(4);
     } finally {

@@ -21,7 +21,7 @@ const FALLBACK_CAMPAIGN = {
     "Your Search Ends Here",
     "Exclusive Offer Just For You"
   ],
-  bodycopies: [
+  bodyCopies: [
     "Are you tired of settling for less? Our product delivers exactly what you need. Join thousands of satisfied customers who made the smart choice.",
     "Introducing the product that changes everything. Premium quality at an unbeatable price. Order today and see the difference yourself."
   ],
@@ -186,9 +186,12 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: "Request timed out after 30 seconds" }, { status: 504 });
       }
       
-      // Fallback logic if Gemini fails or parsing fails
-      console.log("[Generate API] Using fallback campaign data due to Gemini failure");
-      creative = FALLBACK_CAMPAIGN;
+      // Return default data if parsing fails or Gemini fails as requested in FIX 1
+      console.log("[Generate API] Returning fallback campaign data due to error");
+      return NextResponse.json({ 
+        success: true, 
+        campaign: FALLBACK_CAMPAIGN 
+      });
     }
 
     // Save to Supabase
