@@ -76,7 +76,7 @@ export default function SignupPage() {
 
   const strength = useMemo(() => passwordStrength(password), [password]);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const next = {
       fullName: validateName(fullName),
@@ -89,10 +89,39 @@ export default function SignupPage() {
     if (Object.values(next).some(Boolean)) return;
 
     setLoading(true);
-    window.setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: fullName }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      // Automatically login after signup
+      const loginResponse = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const loginData = await loginResponse.json();
+
+      if (!loginResponse.ok) {
+        throw new Error(loginData.error || 'Login after signup failed');
+      }
+
+      localStorage.setItem('supabase.auth.token', JSON.stringify(loginData.session));
       router.push("/dashboard");
-    }, 1200);
+    } catch (err) {
+      setErrors(prev => ({ ...prev, api: err.message }));
+    } finally {
+      setLoading(false);
+    }
   }
 
   const strengthColor =
@@ -125,6 +154,12 @@ export default function SignupPage() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Create Your Account</h1>
             <p className="mt-2 text-slate-600">Start generating ads in minutes</p>
           </div>
+
+          {errors.api && (
+            <div className="mt-6 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600 border border-red-100">
+              {errors.api}
+            </div>
+          )}
 
           <button
             type="button"

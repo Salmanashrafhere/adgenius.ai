@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { supabase } from "@/lib/supabase";
 import {
   Megaphone,
   Image as ImageIcon,
@@ -15,39 +16,104 @@ import {
   Trash2,
 } from "lucide-react";
 
-const initialCampaigns = [
-  { id: "1", name: "Nike Shoes Summer", platform: "Facebook", status: "Ready", ads: 20, date: "2026-05-08" },
-  { id: "2", name: "iPhone 15 Pro", platform: "Instagram", status: "Ready", ads: 15, date: "2026-05-07" },
-  { id: "3", name: "Coffee Brand", platform: "TikTok", status: "Processing", ads: 0, date: "2026-05-06" },
-  { id: "4", name: "Laptop Deal", platform: "Google", status: "Failed", ads: 0, date: "2026-05-05" },
-  { id: "5", name: "Fashion Store", platform: "All", status: "Ready", ads: 50, date: "2026-05-04" },
-];
-
 function statusBadge(status) {
   const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
-  if (status === "Ready") return `${base} bg-emerald-100 text-emerald-800`;
-  if (status === "Processing") return `${base} bg-amber-100 text-amber-800`;
+  if (status === "ready") return `${base} bg-emerald-100 text-emerald-800`;
+  if (status === "processing") return `${base} bg-amber-100 text-amber-800`;
   return `${base} bg-red-100 text-red-800`;
 }
 
-function platformBadge(platform) {
+function platformBadge(platforms) {
+  const platform = Array.isArray(platforms) ? platforms[0] : platforms;
   const colors = {
-    Facebook: "bg-blue-50 text-blue-700 ring-blue-100",
-    Instagram: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-100",
-    TikTok: "bg-slate-900 text-white ring-slate-700",
-    Google: "bg-sky-50 text-sky-700 ring-sky-100",
-    All: "bg-indigo-50 text-indigo-700 ring-indigo-100",
+    facebook: "bg-blue-50 text-blue-700 ring-blue-100",
+    instagram: "bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-100",
+    tiktok: "bg-slate-900 text-white ring-slate-700",
+    google: "bg-sky-50 text-sky-700 ring-sky-100",
+    all: "bg-indigo-50 text-indigo-700 ring-indigo-100",
   };
-  const c = colors[platform] || "bg-slate-100 text-slate-700 ring-slate-200";
+  const c = colors[platform?.toLowerCase()] || "bg-slate-100 text-slate-700 ring-slate-200";
   return `inline-flex rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${c}`;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalCampaigns: 0,
+    totalAds: 0,
+    creditsRemaining: 0
+  });
 
-  function removeCampaign(id) {
-    setCampaigns((prev) => prev.filter((c) => c.id !== id));
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        // Fetch campaigns
+        const { data: campaignsData, error: campaignsError } = await supabase
+          .from('campaigns')
+          .select('*, ad_creatives(count)')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (campaignsError) throw campaignsError;
+
+        // Fetch user stats
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('credits_remaining, credits_used')
+          .eq('id', session.user.id)
+          .single();
+
+        if (userError) throw userError;
+
+        // Fetch total ads count
+        const { count: adsCount, error: adsError } = await supabase
+          .from('ad_creatives')
+          .select('*', { count: 'exact', head: true })
+          .innerJoin('campaigns', 'campaign_id', 'id')
+          .eq('campaigns.user_id', session.user.id);
+
+        setCampaigns(campaignsData || []);
+        setStats({
+          totalCampaigns: campaignsData?.length || 0, // This is just for the last 5, should fetch total count if needed
+          totalAds: adsCount || 0,
+          creditsRemaining: userData.credits_remaining
+        });
+
+        // Get actual total campaigns count
+        const { count: totalCampaignsCount } = await supabase
+          .from('campaigns')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', session.user.id);
+        
+        setStats(prev => ({ ...prev, totalCampaigns: totalCampaignsCount || 0 }));
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, [router]);
+
+  async function removeCampaign(id) {
+    try {
+      const { error } = await supabase.from('campaigns').delete().eq('id', id);
+      if (error) throw error;
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+      setStats(prev => ({ ...prev, totalCampaigns: prev.totalCampaigns - 1 }));
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+    }
   }
 
   return (
@@ -62,9 +128,9 @@ export default function DashboardPage() {
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { label: "Total Campaigns", value: "12", icon: Megaphone, iconBg: "bg-indigo-50 text-indigo-600 ring-indigo-100" },
-              { label: "Ads Generated", value: "240", icon: ImageIcon, iconBg: "bg-purple-50 text-purple-600 ring-purple-100" },
-              { label: "Credits Remaining", value: "150", icon: Zap, iconBg: "bg-amber-50 text-amber-600 ring-amber-100" },
+              { label: "Total Campaigns", value: stats.totalCampaigns.toString(), icon: Megaphone, iconBg: "bg-indigo-50 text-indigo-600 ring-indigo-100" },
+              { label: "Ads Generated", value: stats.totalAds.toString(), icon: ImageIcon, iconBg: "bg-purple-50 text-purple-600 ring-purple-100" },
+              { label: "Credits Remaining", value: stats.creditsRemaining.toString(), icon: Zap, iconBg: "bg-amber-50 text-amber-600 ring-amber-100" },
               { label: "Avg CTR", value: "3.2%", icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600 ring-emerald-100" },
             ].map((s) => (
               <div
@@ -159,17 +225,17 @@ export default function DashboardPage() {
                       <tr key={row.id} className="transition hover:bg-slate-50/80">
                         <td className="px-6 py-4 font-medium text-slate-900">{row.name}</td>
                         <td className="px-6 py-4">
-                          <span className={platformBadge(row.platform)}>{row.platform}</span>
+                          <span className={platformBadge(row.platform)}>{Array.isArray(row.platform) ? row.platform[0] : row.platform}</span>
                         </td>
                         <td className="px-6 py-4">
                           <span className={statusBadge(row.status)}>{row.status}</span>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">{row.ads}</td>
-                        <td className="px-6 py-4 text-slate-600">{row.date}</td>
+                        <td className="px-6 py-4 text-slate-600">{row.ad_creatives?.[0]?.count || 0}</td>
+                        <td className="px-6 py-4 text-slate-600">{new Date(row.created_at).toLocaleDateString()}</td>
                         <td className="px-6 py-4">
                           <div className="flex justify-end gap-1">
                             <Link
-                              href="/campaigns/1"
+                              href={`/campaigns/${row.id}`}
                               className="rounded-lg p-2 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 active:scale-95"
                               aria-label="View"
                             >

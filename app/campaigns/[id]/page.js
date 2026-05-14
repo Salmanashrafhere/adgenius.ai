@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import { supabase } from "@/lib/supabase";
 import { 
   ArrowLeft, 
   Download, 
@@ -88,6 +89,66 @@ export default function CampaignDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("ads");
+  const [campaign, setCampaign] = useState(null);
+  const [creatives, setCreatives] = useState([]);
+  const [variations, setVariations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCampaignData() {
+      try {
+        const { data: campaignData, error: campaignError } = await supabase
+          .from('campaigns')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (campaignError) throw campaignError;
+        setCampaign(campaignData);
+
+        const { data: creativesData } = await supabase
+          .from('ad_creatives')
+          .select('*')
+          .eq('campaign_id', id);
+        
+        setCreatives(creativesData || []);
+
+        const { data: variationsData } = await supabase
+          .from('copy_variations')
+          .select('*')
+          .eq('campaign_id', id);
+        
+        setVariations(variationsData || []);
+
+      } catch (error) {
+        console.error('Error fetching campaign details:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (id) fetchCampaignData();
+  }, [id]);
+
+  if (loading) return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+    </div>
+  );
+
+  if (!campaign) return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <h2 className="text-xl font-bold">Campaign not found</h2>
+      <button onClick={() => router.push('/dashboard')} className="text-indigo-600 hover:underline">
+        Back to Dashboard
+      </button>
+    </div>
+  );
+
+  const headlines = variations.filter(v => v.category === 'headline');
+  const bodyCopies = variations.filter(v => v.category === 'body_copy');
+  const ctas = variations.filter(v => v.category === 'cta');
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -106,12 +167,14 @@ export default function CampaignDetailPage() {
               </button>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-slate-900">Nike Shoes Summer Sale</h1>
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                    Ready
+                  <h1 className="text-xl font-bold tracking-tight text-slate-900">{campaign.name}</h1>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    campaign.status === 'ready' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                   </span>
                 </div>
-                <p className="text-sm text-slate-500">ID: {id} • Created May 12, 2026</p>
+                <p className="text-sm text-slate-500">ID: {id} • Created {new Date(campaign.created_at).toLocaleDateString()}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -157,25 +220,26 @@ export default function CampaignDetailPage() {
         <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
           {activeTab === "ads" && (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-xl">
+              {creatives.map((ad, i) => (
+                <div key={ad.id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-xl">
                   <div className="relative h-[400px] w-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-8">
                     <div className="absolute inset-0 bg-black/10 transition group-hover:bg-black/0" />
-                    <span className="relative z-10 inline-flex rounded-md bg-white/20 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md">
-                      {i % 2 === 0 ? "INSTAGRAM" : "FACEBOOK"}
+                    <span className="relative z-10 inline-flex rounded-md bg-white/20 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-md uppercase">
+                      {ad.platform}
                     </span>
                     <div className="relative z-10 mt-4">
                       <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white drop-shadow-lg">
-                        Step into <br /> Summer
+                        {ad.headline}
                       </h3>
-                      <p className="mt-2 text-sm font-medium text-white/90 drop-shadow-md">New Nike Collection</p>
+                      <p className="mt-2 text-sm font-medium text-white/90 drop-shadow-md">{ad.body_copy.slice(0, 100)}...</p>
                     </div>
                     <div className="absolute bottom-8 left-8 right-8 z-10">
                       <button className="w-full rounded-full bg-white py-3 text-sm font-bold text-slate-900 shadow-xl transition hover:scale-105 active:scale-95">
-                        Shop Now
+                        {ad.cta_text}
                       </button>
                     </div>
                   </div>
+
                   <div className="flex items-center justify-between border-t border-slate-100 bg-white px-4 py-3">
                     <div className="flex gap-1">
                       <button className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-50 hover:text-indigo-600"><Edit2 className="h-4 w-4" /></button>
@@ -199,16 +263,16 @@ export default function CampaignDetailPage() {
                   <h2 className="text-lg font-bold text-slate-900">Headlines</h2>
                   <span className="text-sm text-slate-500">{headlines.length} variations</span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {headlines.map((h, idx) => (
-                    <div key={idx} className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-sm">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">{h.formula}</span>
-                        <p className="text-sm font-medium text-slate-800">{h.text}</p>
-                      </div>
-                      <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
-                        <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-indigo-600"><Copy className="h-4 w-4" /></button>
-                        <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-amber-500"><Star className="h-4 w-4" /></button>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {headlines.map((item, idx) => (
+                    <div key={idx} className="group relative rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-200 hover:shadow-md">
+                      <p className="text-sm font-medium text-slate-900">{item.content}</p>
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.formula || 'Creative'}</span>
+                        <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
+                          <button className="rounded-md p-1.5 text-slate-400 hover:bg-slate-50 hover:text-indigo-600"><Copy className="h-3.5 w-3.5" /></button>
+                          <button className="rounded-md p-1.5 text-slate-400 hover:bg-slate-50 hover:text-amber-500"><Star className="h-3.5 w-3.5" /></button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -221,17 +285,19 @@ export default function CampaignDetailPage() {
                   <h2 className="text-lg font-bold text-slate-900">Body Copies</h2>
                   <span className="text-sm text-slate-500">{bodyCopies.length} variations</span>
                 </div>
-                <div className="space-y-4">
-                  {bodyCopies.map((b, idx) => (
-                    <div key={idx} className="group rounded-xl border border-slate-200 bg-white p-6 transition hover:border-indigo-200">
-                      <div className="mb-4 flex items-center justify-between">
-                        <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{b.formula}</span>
-                        <button className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95">
-                          <Copy className="h-3.5 w-3.5" />
-                          Copy Text
-                        </button>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {bodyCopies.map((item, idx) => (
+                    <div key={idx} className="group relative rounded-xl border border-slate-200 bg-white p-6 transition hover:border-indigo-200 hover:shadow-md">
+                      <p className="text-sm leading-relaxed text-slate-600">{item.content}</p>
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-4">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.formula || 'PAS'}</span>
+                        <div className="flex gap-2">
+                          <button className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-indigo-600">
+                            <Copy className="h-3.5 w-3.5" />
+                            Copy
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-sm leading-relaxed text-slate-600">{b.text}</p>
                     </div>
                   ))}
                 </div>
@@ -240,18 +306,14 @@ export default function CampaignDetailPage() {
               {/* CTAs */}
               <section>
                 <div className="mb-6">
-                  <h2 className="text-lg font-bold text-slate-900">Calls to Action</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Call to Actions</h2>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   {ctas.map((cta, idx) => (
-                    <div key={idx} className="group relative">
-                      <button className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-indigo-500 active:scale-95">
-                        {cta}
-                      </button>
-                      <button className="absolute -right-2 -top-2 rounded-full border border-slate-200 bg-white p-1 text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-indigo-600 shadow-sm">
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
+                    <button key={idx} className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600">
+                      {cta.content}
+                      <Copy className="h-3.5 w-3.5 opacity-0 transition group-hover:opacity-100" />
+                    </button>
                   ))}
                 </div>
               </section>

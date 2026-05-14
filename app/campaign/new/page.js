@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { supabase } from "@/lib/supabase";
 import {
   Globe,
   Check,
@@ -261,6 +262,12 @@ export default function NewCampaignPage() {
     try {
       // 1. Analyze & Extract (Simulated or via /api/generate)
       setProcessingPhase(1);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("You must be logged in to generate campaigns");
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,6 +278,7 @@ export default function NewCampaignPage() {
           tone: tone.toLowerCase(),
           audienceTags,
           budget,
+          userId: session.user.id
         }),
         signal: controller.signal,
       });
@@ -372,9 +380,9 @@ export default function NewCampaignPage() {
         cta: ctas[i % Math.max(ctas.length, 1)] || "Shop Now",
         body: bodies[i % Math.max(bodies.length, 1)] || "",
         platform: platformLabels[i % platformLabels.length],
-        type: imageObj ? "image" : "headline",
+        type: imageObj?.type === "gradient" ? "gradient" : imageObj ? "image" : "headline",
         image: imageObj?.url,
-        grad: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
+        grad: imageObj?.type === "gradient" ? imageObj.url : CARD_GRADIENTS[i % CARD_GRADIENTS.length],
         productTitle,
       };
     });
@@ -791,7 +799,12 @@ export default function NewCampaignPage() {
                           }`}
                         >
                           <div className="relative aspect-square overflow-hidden bg-slate-100">
-                            {ad.image ? (
+                            {ad.type === "gradient" ? (
+                              <div 
+                                className="h-full w-full transition duration-500 group-hover:scale-110" 
+                                style={{ background: ad.grad }}
+                              />
+                            ) : ad.image ? (
                               <img
                                 src={ad.image}
                                 alt={ad.headline}

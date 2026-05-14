@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { supabase } from "@/lib/supabase";
 import { 
   Search, 
   Plus, 
@@ -17,40 +18,81 @@ import {
   MoreVertical
 } from "lucide-react";
 
-const campaigns = [
-  { id: "1", name: "Nike Shoes Summer Sale", platform: ["Facebook", "Instagram"], status: "Ready", ads: 24, date: "May 12, 2026", color: "from-indigo-500 to-blue-600" },
-  { id: "2", name: "iPhone 15 Pro Launch", platform: ["Instagram", "TikTok"], status: "Ready", ads: 18, date: "May 10, 2026", color: "from-purple-500 to-pink-600" },
-  { id: "3", name: "Starbucks Morning Coffee", platform: ["TikTok"], status: "Processing", ads: 0, date: "May 09, 2026", color: "from-emerald-500 to-teal-600" },
-  { id: "4", name: "Tesla Model 3 Promo", platform: ["Google", "Facebook"], status: "Failed", ads: 0, date: "May 08, 2026", color: "from-slate-700 to-slate-900" },
-  { id: "5", name: "Fashion Week Collection", platform: ["All"], status: "Ready", ads: 42, date: "May 07, 2026", color: "from-orange-500 to-red-600" },
-  { id: "6", name: "Gaming Headset Review", platform: ["TikTok", "Instagram"], status: "Ready", ads: 12, date: "May 06, 2026", color: "from-blue-600 to-indigo-700" },
-  { id: "7", name: "Eco-Friendly Water Bottle", platform: ["Facebook"], status: "Ready", ads: 15, date: "May 05, 2026", color: "from-green-500 to-emerald-600" },
-  { id: "8", name: "Online Course: AI Basics", platform: ["Google"], status: "Processing", ads: 0, date: "May 04, 2026", color: "from-indigo-600 to-purple-700" },
-  { id: "9", name: "Pet Food Subscription", platform: ["Instagram"], status: "Ready", ads: 20, date: "May 03, 2026", color: "from-amber-500 to-orange-600" },
-];
-
 function statusBadge(status) {
   const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
-  if (status === "Ready") return `${base} bg-emerald-100 text-emerald-800`;
-  if (status === "Processing") return `${base} bg-amber-100 text-amber-800`;
+  if (status === "ready") return `${base} bg-emerald-100 text-emerald-800`;
+  if (status === "processing") return `${base} bg-amber-100 text-amber-800`;
   return `${base} bg-red-100 text-red-800`;
 }
 
 function platformBadge(platform) {
   const colors = {
-    Facebook: "bg-blue-50 text-blue-700",
-    Instagram: "bg-fuchsia-50 text-fuchsia-700",
-    TikTok: "bg-slate-900 text-white",
-    Google: "bg-sky-50 text-sky-700",
-    All: "bg-indigo-50 text-indigo-700",
+    facebook: "bg-blue-50 text-blue-700",
+    instagram: "bg-fuchsia-50 text-fuchsia-700",
+    tiktok: "bg-slate-900 text-white",
+    google: "bg-sky-50 text-sky-700",
+    all: "bg-indigo-50 text-indigo-700",
   };
-  const c = colors[platform] || "bg-slate-100 text-slate-700";
+  const c = colors[platform?.toLowerCase()] || "bg-slate-100 text-slate-700";
   return `inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-slate-200/10 ${c}`;
 }
 
+const colors = [
+  "from-indigo-500 to-blue-600",
+  "from-purple-500 to-pink-600",
+  "from-emerald-500 to-teal-600",
+  "from-slate-700 to-slate-900",
+  "from-orange-500 to-red-600",
+  "from-blue-600 to-indigo-700",
+  "from-green-500 to-emerald-600"
+];
+
 export default function CampaignsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("All Status");
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  async function fetchCampaigns() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*, ad_creatives(count)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCampaigns(data || []);
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteCampaign(id) {
+    if (!confirm('Are you sure you want to delete this campaign?')) return;
+    try {
+      const { error } = await supabase.from('campaigns').delete().eq('id', id);
+      if (error) throw error;
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+    }
+  }
+
+  const filteredCampaigns = campaigns.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filter === "All Status" || c.status === filter.toLowerCase();
+    return matchesSearch && matchesFilter;
+  });
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -103,16 +145,16 @@ export default function CampaignsPage() {
           </div>
           
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {campaigns.map((campaign) => (
+            {filteredCampaigns.map((campaign, index) => (
               <div
                 key={campaign.id}
                 className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
                 {/* Gradient Header */}
-                <div className={`h-24 w-full bg-gradient-to-br ${campaign.color} p-4`}>
+                <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
                   <div className="flex items-center justify-between">
                     <div className="flex gap-1.5">
-                      {campaign.platform.map((p) => (
+                      {(Array.isArray(campaign.platform) ? campaign.platform : [campaign.platform]).map((p) => (
                         <span key={p} className={platformBadge(p)}>{p}</span>
                       ))}
                     </div>
@@ -134,18 +176,18 @@ export default function CampaignsPage() {
                   <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Layers className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-700">{campaign.ads} Ads</span>
+                      <span className="font-medium text-slate-700">{campaign.ad_creatives?.[0]?.count || 0} Ads</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <Calendar className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-700">{campaign.date}</span>
+                      <span className="font-medium text-slate-700">{new Date(campaign.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="mt-6 flex gap-2">
                     <Link
-                      href="/campaigns/1"
+                      href={`/campaigns/${campaign.id}`}
                       className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-50 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -154,7 +196,10 @@ export default function CampaignsPage() {
                     <button className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95">
                       <Download className="h-4 w-4" />
                     </button>
-                    <button className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                    <button 
+                      onClick={() => deleteCampaign(campaign.id)}
+                      className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -162,6 +207,7 @@ export default function CampaignsPage() {
               </div>
             ))}
           </div>
+
 
           {/* Pagination */}
           <div className="mt-12 flex items-center justify-center gap-2">

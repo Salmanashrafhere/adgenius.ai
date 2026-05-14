@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -73,10 +74,14 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
+    }
+
+    if (!userId) {
+      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
     }
 
     const platforms = normalizePlatforms(platform);
@@ -159,26 +164,106 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: msg }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      campaign: {
-        title: scraped.title,
-        description: scraped.description,
-        imageUrl: scraped.imageUrl,
-        productUrl: normalizedUrl,
-        platforms,
-        goal: goalNorm,
-        tone: toneNorm,
-        audienceTags: tags,
-        budget: budgetVal ?? null,
-        headlines: creative.headlines,
-        bodycopies: creative.bodycopies,
-        ctas: creative.ctas,
-        angles: creative.angles,
-        targetAudience: creative.targetAudience,
-        strategy: creative.strategy,
-      },
-    });
+    // Save to Supabase
+    try {
+      // 1. Save campaign
+      const { data: campaign, error: campaignError } = await supabaseAdmin
+        .from('campaigns')
+        .insert({
+          user_id: userId,
+          name: scraped.title,
+          product_url: normalizedUrl,
+          product_title: scraped.title,
+          product_description: scraped.description,
+          platform: platforms,
+          goal: goalNorm,
+          tone: toneNorm,
+          status: 'processing'
+        })
+        .select()
+        .single();
+
+      if (campaignError) throw campaignError;
+
+      // 2. Save ad creatives
+      const adCreatives = creative.headlines.map((headline, i) => ({
+        campaign_id: campaign.id,
+        headline: headline,
+        body_copy: creative.bodycopies[i % creative.bodycopies.length],
+        cta_text: creative.ctas[i % creative.ctas.length],
+        angle: creative.angles[i % creative.angles.length],
+        platform: platforms[0], // Using the first platform for individual creatives
+        status: 'generated'
+      }));
+
+      const { error: creativesError } = await supabaseAdmin
+        .from('ad_creatives')
+        .insert(adCreatives);
+
+      if (creativesError) throw creativesError;
+
+      // 3. Save copy variations
+      const copyVariations = [
+        ...creative.headlines.map(h => ({ campaign_id: campaign.id, category: 'headline', content: h })),
+        ...creative.bodycopies.map(b => ({ campaign_id: campaign.id, category: 'body_copy', content: b })),
+        ...creative.ctas.map(c => ({ campaign_id: campaign.id, category: 'cta', content: c }))
+      ];
+
+      await supabaseAdmin.from('copy_variations').insert(copyVariations);
+
+      // 4. Update campaign status
+      await supabaseAdmin
+        .from('campaigns')
+        .update({ status: 'ready', completed_at: new Date() })
+        .eq('id', campaign.id);
+
+      return NextResponse.json({
+        success: true,
+        campaignId: campaign.id,
+        campaign: {
+          title: scraped.title,
+          description: scraped.description,
+          imageUrl: scraped.imageUrl,
+          productUrl: normalizedUrl,
+          platforms,
+          goal: goalNorm,
+          tone: toneNorm,
+          audienceTags: tags,
+          budget: budgetVal ?? null,
+          headlines: creative.headlines,
+          bodycopies: creative.bodycopies,
+          ctas: creative.ctas,
+          angles: creative.angles,
+          targetAudience: creative.targetAudience,
+          strategy: creative.strategy,
+        },
+      });
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      // Still return the generated content even if saving fails, but maybe add a warning
+      return NextResponse.json({
+        success: true,
+        warning: "Generated successfully but failed to save to database",
+        campaign: {
+          title: scraped.title,
+          description: scraped.description,
+          imageUrl: scraped.imageUrl,
+          productUrl: normalizedUrl,
+          platforms,
+          goal: goalNorm,
+          tone: toneNorm,
+          audienceTags: tags,
+          budget: budgetVal ?? null,
+          headlines: creative.headlines,
+          bodycopies: creative.bodycopies,
+          ctas: creative.ctas,
+          angles: creative.angles,
+          targetAudience: creative.targetAudience,
+          strategy: creative.strategy,
+        },
+      });
+    }
+
   } catch (e) {
     const aborted = e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"));
     if (aborted) {

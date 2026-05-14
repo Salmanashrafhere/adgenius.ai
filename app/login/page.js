@@ -50,7 +50,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const next = {
       email: validateEmail(email),
@@ -60,11 +60,26 @@ export default function LoginPage() {
     if (next.email || next.password) return;
 
     setLoading(true);
-    // Simulate auth — replace with real API
-    window.setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
       router.push("/dashboard");
-    }, 1200);
+    } catch (err) {
+      setErrors(prev => ({ ...prev, api: err.message }));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -85,6 +100,12 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Welcome Back</h1>
             <p className="mt-2 text-slate-600">Sign in to your account</p>
           </div>
+
+          {errors.api && (
+            <div className="mt-6 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-600 border border-red-100">
+              {errors.api}
+            </div>
+          )}
 
           <button
             type="button"
