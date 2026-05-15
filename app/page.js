@@ -7,7 +7,7 @@ import {
   Menu,
   X,
   PenLine,
-  ImageIcon,
+  Image as ImageIcon,
   LayoutGrid,
   SplitSquareHorizontal,
   Eye,
