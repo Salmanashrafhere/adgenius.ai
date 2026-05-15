@@ -16,6 +16,7 @@ import {
   Download,
   X,
   Sparkles,
+  ArrowRight,
 } from "lucide-react";
 
 const STEP_LABELS = ["Product URL", "Configure", "Processing", "Results", "Download"];
@@ -397,17 +398,150 @@ export default function NewCampaignPage() {
 
             {step === 2 && (
               <div className="space-y-8">
-                {/* Configuration form for Step 2 */}
-                <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/50 ring-1 ring-slate-900/5">
-                  <h2 className="text-2xl font-bold text-slate-900">Campaign Settings</h2>
-                  {/* ... Simplified version of Step 2 form ... */}
-                  <div className="mt-8">
-                    <button
-                      onClick={runConfigure}
-                      className="w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl shadow-indigo-600/30 transition hover:bg-indigo-500 active:scale-95"
-                    >
-                      Generate Campaign
-                    </button>
+                <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/50 ring-1 ring-slate-900/5 sm:p-12">
+                  <div className="mb-10 text-center">
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Campaign Settings</h2>
+                    <p className="mt-3 text-lg text-slate-600">Tell us where and how you want to advertise.</p>
+                  </div>
+
+                  <div className="space-y-10">
+                    {/* Platforms */}
+                    <div>
+                      <label className="text-sm font-bold uppercase tracking-widest text-slate-400">Target Platforms</label>
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                        {PLATFORMS.map(({ id, label, Icon, cardClass, iconWrap }) => (
+                          <button
+                            key={id}
+                            onClick={() => togglePlatform(id)}
+                            className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200 ${
+                              selectedPlatforms.includes(id)
+                                ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/10"
+                                : `border-slate-50 bg-slate-50/30 hover:bg-white ${cardClass}`
+                            }`}
+                          >
+                            <div className={`rounded-xl p-2 ${iconWrap || ""}`}>
+                              <Icon className="h-6 w-6" />
+                            </div>
+                            <span className={`text-xs font-bold ${selectedPlatforms.includes(id) ? "text-indigo-700" : "text-slate-600"}`}>
+                              {label}
+                            </span>
+                            {selectedPlatforms.includes(id) && (
+                              <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
+                                <Check className="h-3 w-3" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-10 md:grid-cols-2">
+                      {/* Campaign Goal */}
+                      <div>
+                        <label className="text-sm font-bold uppercase tracking-widest text-slate-400">Campaign Goal</label>
+                        <div className="mt-4 space-y-3">
+                          {GOALS.map(({ id, label, desc, icon: Icon }) => (
+                            <button
+                              key={id}
+                              onClick={() => setGoal(id)}
+                              className={`flex w-full items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all duration-200 ${
+                                goal === id
+                                  ? "border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-600/10"
+                                  : "border-slate-50 bg-slate-50/30 hover:border-slate-200 hover:bg-white"
+                              }`}
+                            >
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                                goal === id ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-500"
+                              }`}>
+                                <Icon className="h-5 w-5" />
+                              </div>
+                              <div className="flex-1">
+                                <p className={`text-sm font-bold ${goal === id ? "text-indigo-700" : "text-slate-900"}`}>{label}</p>
+                                <p className="text-xs text-slate-500">{desc}</p>
+                              </div>
+                              {goal === id && <Check className="h-5 w-5 text-indigo-600" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Brand Tone */}
+                      <div>
+                        <label className="text-sm font-bold uppercase tracking-widest text-slate-400">Brand Tone</label>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          {TONES.map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => setTone(t)}
+                              className={`rounded-xl border-2 py-4 text-sm font-bold transition-all duration-200 ${
+                                tone === t
+                                  ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 ring-2 ring-indigo-600/10"
+                                  : "border-slate-50 bg-slate-50/30 text-slate-600 hover:border-slate-200 hover:bg-white"
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="mt-8">
+                          <label className="text-sm font-bold uppercase tracking-widest text-slate-400">Audience Interests</label>
+                          <div className="mt-4 flex flex-wrap gap-2 rounded-2xl border-2 border-slate-50 bg-slate-50/30 p-3">
+                            {audienceTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200"
+                              >
+                                {tag}
+                                <button onClick={() => removeTag(tag)} className="text-slate-400 hover:text-red-500">
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              type="text"
+                              value={tagInput}
+                              onChange={(e) => setTagInput(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && addTag()}
+                              placeholder="Add tag..."
+                              className="flex-1 bg-transparent px-2 py-1.5 text-xs font-medium focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {configError && (
+                      <div className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600 ring-1 ring-red-100">
+                        {configError}
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-4 pt-4 sm:flex-row">
+                      <button
+                        onClick={() => setStep(1)}
+                        className="flex-1 rounded-2xl border-2 border-slate-200 py-4 text-lg font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={runConfigure}
+                        disabled={genInProgress.current}
+                        className="flex-[2] flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl shadow-indigo-600/30 transition hover:bg-indigo-500 active:scale-95 disabled:opacity-50"
+                      >
+                        {genInProgress.current ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Initializing...
+                          </>
+                        ) : (
+                          <>
+                            Generate Campaign
+                            <Sparkles className="h-5 w-5" />
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -415,35 +549,98 @@ export default function NewCampaignPage() {
 
             {step === 3 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Loader2 className="h-12 w-12 animate-spin text-indigo-600" />
-                <h2 className="mt-6 text-2xl font-bold text-slate-900">Generating your campaign...</h2>
-                <p className="mt-2 text-slate-600">This might take a minute.</p>
-                <div className="mt-8 w-full max-w-md overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-2 bg-indigo-600 transition-all duration-300" style={{ width: `${progress}%` }} />
+                <div className="relative mb-12">
+                  <div className="absolute -inset-4 animate-pulse rounded-full bg-indigo-50/50" />
+                  <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-white shadow-xl shadow-indigo-100 ring-1 ring-slate-100">
+                    <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+                  </div>
+                </div>
+                
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                  {processingPhase === 0 && "Analyzing your product..."}
+                  {processingPhase === 1 && "Writing high-converting copy..."}
+                  {processingPhase === 2 && "Designing creative variations..."}
+                  {processingPhase === 3 && "Finalizing your campaign..."}
+                </h2>
+                
+                <p className="mt-3 text-lg text-slate-500">AdGenius is crafting your high-performing ads.</p>
+
+                <div className="mt-10 w-full max-w-md">
+                  <div className="flex justify-between text-sm font-bold text-slate-400">
+                    <span>Progress</span>
+                    <span>{Math.round(progress)}%</span>
+                  </div>
+                  <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-100 p-0.5 ring-1 ring-slate-200/50">
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500 ease-out shadow-sm" 
+                      style={{ width: `${progress}%` }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-16 h-12">
+                  <p className="animate-in fade-in slide-in-from-bottom-2 text-sm font-medium italic text-slate-400 duration-700">
+                    {ROTATING_TIPS[tipIndex]}
+                  </p>
                 </div>
               </div>
             )}
 
             {step === 4 && (
-              <div className="space-y-8">
-                <h2 className="text-2xl font-bold text-slate-900">Your Generated Ads</h2>
+              <div className="space-y-10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Your Generated Ads</h2>
+                    <p className="mt-2 text-slate-500">We've generated {campaignData?.creatives.length} ad variations for your campaign.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95">
+                      <Download className="h-4 w-4" />
+                      Export All
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid gap-6 sm:grid-cols-2">
-                  {campaignData?.creatives.map((ad) => (
-                    <div key={ad.id} className="rounded-2xl border border-slate-100 bg-white p-6 shadow-md">
-                      <h3 className="font-bold text-slate-900">{ad.headline}</h3>
-                      <p className="mt-2 text-slate-600">{ad.body}</p>
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">{ad.platform}</span>
-                        <button className="text-slate-400 hover:text-indigo-600">
-                          <Download className="h-5 w-5" />
+                  {campaignData?.creatives.map((ad, i) => (
+                    <div key={ad.id} className="group relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/50 ring-1 ring-slate-900/5 transition hover:-translate-y-1 hover:shadow-2xl">
+                      <div className={`absolute left-0 top-0 h-1.5 w-full bg-gradient-to-r ${CARD_GRADIENTS[i % CARD_GRADIENTS.length]}`} />
+                      
+                      <div className="mb-6 flex items-center justify-between">
+                        <span className="inline-flex items-center rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                          {ad.platform}
+                        </span>
+                        <div className="flex gap-1">
+                          <button className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-50 hover:text-indigo-600">
+                            <Heart className="h-5 w-5" />
+                          </button>
+                          <button className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-50 hover:text-indigo-600">
+                            <Download className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <h3 className="text-xl font-bold text-slate-900">{ad.headline}</h3>
+                      <p className="mt-3 text-slate-600 leading-relaxed">{ad.body}</p>
+                      
+                      <div className="mt-8 flex items-center justify-between border-t border-slate-50 pt-6">
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Mockup Preview</span>
+                        <button className="flex items-center gap-1.5 text-sm font-bold text-indigo-600 transition hover:text-indigo-700">
+                          Customize
+                          <ArrowRight className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-center">
-                   <Link href="/dashboard" className="rounded-xl bg-slate-900 px-8 py-3 font-bold text-white transition hover:bg-slate-800">
-                     Back to Dashboard
+
+                <div className="flex justify-center border-t border-slate-100 pt-10">
+                   <Link 
+                     href="/dashboard" 
+                     className="flex items-center gap-2 rounded-2xl bg-slate-900 px-10 py-4 text-lg font-bold text-white shadow-xl shadow-slate-900/30 transition hover:bg-slate-800 active:scale-95"
+                   >
+                     Finish & Back to Dashboard
+                     <Check className="h-5 w-5" />
                    </Link>
                 </div>
               </div>
