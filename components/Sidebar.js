@@ -1,9 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
 import {
   Sparkles,
   LayoutDashboard,
@@ -29,15 +28,20 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, session } = useAuth(false);
+  const [user, setUser] = useState(null);
 
-  const handleLogout = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
-      localStorage.removeItem('supabase.auth.token');
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('adgenius_user');
     }
     router.push("/login");
   };
@@ -82,11 +86,11 @@ export default function Sidebar() {
         <div className="border-t border-slate-100 p-4">
           <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
-              {(user?.user_metadata?.name || user?.name || "User").split(' ').map(n => n[0]).join('').toUpperCase()}
+              {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-900">{user?.user_metadata?.name || user?.name || "Demo User"}</p>
-              <p className="truncate text-xs text-slate-500">{user?.email || "demo@adgenius.ai"}</p>
+              <p className="truncate text-sm font-semibold text-slate-900">{user?.name || "User"}</p>
+              <p className="truncate text-xs text-slate-500">{user?.email || "user@example.com"}</p>
             </div>
           </div>
           <button

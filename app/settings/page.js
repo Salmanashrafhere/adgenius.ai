@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { useAuth } from "@/hooks/useAuth";
 import { 
   User, 
   Palette, 
@@ -30,13 +30,29 @@ const tabs = [
 ];
 
 export default function SettingsPage() {
-  const { session, user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("profile");
+  const [loading, setLoading] = useState(true);
 
-  if (authLoading) return null;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+        setLoading(false);
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [router]);
 
-  if (!supabase) {
-    console.log('Supabase not configured');
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (
@@ -79,7 +95,7 @@ export default function SettingsPage() {
                   <div className="mt-8 flex flex-col gap-8 sm:flex-row sm:items-start">
                     <div className="relative h-24 w-24 shrink-0">
                       <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl font-bold text-white shadow-lg">
-                        {(user?.user_metadata?.name || user?.name || "User").split(' ').map(n => n[0]).join('').toUpperCase()}
+                        {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
                       </div>
                       <button className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-slate-600 transition hover:bg-slate-200">
                         <Camera className="h-4 w-4" />
@@ -90,7 +106,7 @@ export default function SettingsPage() {
                         <label className="text-sm font-medium text-slate-700">Full Name</label>
                         <input
                           type="text"
-                          defaultValue={user?.user_metadata?.name || user?.name || "John Doe"}
+                          defaultValue={user?.name || ""}
                           className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
                         />
                       </div>
@@ -100,7 +116,7 @@ export default function SettingsPage() {
                           <input
                             type="email"
                             disabled
-                            defaultValue={user?.email || "john@adgenius.ai"}
+                            defaultValue={user?.email || ""}
                             className="w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 pl-3 pr-10 text-sm text-slate-500"
                           />
                           <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -247,118 +263,12 @@ export default function SettingsPage() {
                         <label className="text-sm font-medium text-slate-700">Current Password</label>
                         <input type="password" placeholder="••••••••" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">New Password</label>
-                        <input type="password" placeholder="••••••••" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Confirm New Password</label>
-                        <input type="password" placeholder="••••••••" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                      <div className="flex items-center gap-3">
-                        <Shield className="h-5 w-5 text-indigo-600" />
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">Two-factor authentication</p>
-                          <p className="text-xs text-slate-500">Add an extra layer of security to your account.</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex cursor-pointer items-center">
-                        <input type="checkbox" className="peer sr-only" />
-                        <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-600/20" />
-                      </label>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-900">Active Sessions</h3>
-                      <div className="mt-4 space-y-4">
-                        {[
-                          { device: "MacBook Pro", browser: "Chrome", location: "San Francisco, US", current: true, icon: Laptop },
-                          { device: "iPhone 15", browser: "Safari", location: "San Francisco, US", current: false, icon: Smartphone },
-                        ].map((session, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                                <session.icon className="h-5 w-5" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">
-                                  {session.device} • {session.browser}
-                                  {session.current && <span className="ml-2 text-xs font-bold text-emerald-600">Current</span>}
-                                </p>
-                                <p className="text-xs text-slate-500">{session.location}</p>
-                              </div>
-                            </div>
-                            {!session.current && (
-                              <button className="text-xs font-semibold text-red-600 hover:text-red-700">Revoke</button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
-                  <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
-                    <button className="text-sm font-semibold text-red-600 hover:text-red-700">
-                      Sign out of all devices
-                    </button>
+                  <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
                     <button className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.99]">
                       Update Password
                     </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "api" && (
-              <div className="space-y-6">
-                <div className="relative overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50/30 p-8">
-                  <div className="relative z-10 flex flex-col items-center text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-indigo-100">
-                      <Lock className="h-8 w-8 text-indigo-600" />
-                    </div>
-                    <h2 className="mt-6 text-xl font-bold text-slate-900">Pro Plan Required</h2>
-                    <p className="mt-2 max-w-sm text-sm text-slate-600">
-                      API access is only available on our Pro Plan. Upgrade your subscription to start building with AdGenius AI.
-                    </p>
-                    <button className="mt-8 rounded-xl bg-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.99]">
-                      Upgrade to Pro
-                    </button>
-                  </div>
-                </div>
-
-                <div className="opacity-50 pointer-events-none grayscale">
-                  <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">API Access</h2>
-                    <div className="mt-6 space-y-6">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Your API Key</label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              readOnly
-                              value="sk_test_51MzXXXXXXXXXXXXXXXXXXXXX"
-                              className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-mono text-slate-500 blur-sm"
-                            />
-                            <button className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 hover:bg-slate-200">
-                              <Copy className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <button className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium hover:bg-slate-50">
-                            <RefreshCw className="h-4 w-4" />
-                            Regenerate
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-                        <a href="#" className="flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-                          API Documentation
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>

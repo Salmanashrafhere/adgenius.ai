@@ -5,14 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
 import {
   Megaphone,
   Image as ImageIcon,
   TrendingUp,
   Zap,
-  Eye,
   Download,
   Trash2,
 } from "lucide-react";
@@ -38,8 +35,8 @@ function platformBadge(platforms) {
 }
 
 export default function DashboardPage() {
-  const { session, user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -49,117 +46,33 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      if (authLoading) return;
-
-      if (!supabase) {
-        console.log('Supabase not configured');
-        setCampaigns([]);
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
         setStats({
           totalCampaigns: 0,
           totalAds: 0,
-          creditsRemaining: 0
+          creditsRemaining: parsedUser.credits || 0
         });
-        setLoading(false);
-        return;
+      } else {
+        router.push('/login');
       }
-
-      try {
-        if (!user && !session) {
-          router.push('/login');
-          return;
-        }
-
-        const userId = user?.id || session?.user?.id;
-        if (!userId) {
-          setLoading(false);
-          return;
-        }
-
-        // Fetch campaigns
-        const { data: campaignsData, error: campaignsError } = await supabase
-          .from('campaigns')
-          .select('*, ad_creatives(count)')
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (campaignsError) {
-          console.warn('Could not fetch campaigns');
-          setCampaigns([]);
-        } else {
-          setCampaigns(campaignsData || []);
-        }
-
-        // Fetch user stats
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('credits_remaining, credits_used')
-          .eq('id', userId)
-          .single();
-
-        let credits = 0;
-        if (!userError && userData) {
-          credits = userData.credits_remaining;
-        }
-
-        // Fetch total ads count
-        let adsCount = 0;
-        try {
-          const { count, error: adsError } = await supabase
-            .from('ad_creatives')
-            .select('id, campaigns!inner(user_id)', { count: 'exact', head: true })
-            .eq('campaigns.user_id', userId);
-          
-          if (!adsError) adsCount = count || 0;
-        } catch (e) {
-          console.warn('Could not fetch ads count');
-        }
-
-        // Get actual total campaigns count
-        let totalCampaignsCount = campaignsData?.length || 0;
-        try {
-          const { count } = await supabase
-            .from('campaigns')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId);
-          if (count !== null) totalCampaignsCount = count;
-        } catch (e) {}
-        
-        setStats({
-          totalCampaigns: totalCampaignsCount,
-          totalAds: adsCount,
-          creditsRemaining: credits
-        });
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        setCampaigns([]);
-        setStats({
-          totalCampaigns: 0,
-          totalAds: 0,
-          creditsRemaining: 0
-        });
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     }
+  }, [router]);
 
-    fetchDashboardData();
-  }, [router, authLoading, session, user]);
+  const removeCampaign = (id) => {
+    setCampaigns((prev) => prev.filter((c) => c.id !== id));
+  };
 
-  async function removeCampaign(id) {
-    if (!supabase) {
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
-      return;
-    }
-    try {
-      const { error } = await supabase.from('campaigns').delete().eq('id', id);
-      if (error) throw error;
-      setCampaigns((prev) => prev.filter((c) => c.id !== id));
-      setStats(prev => ({ ...prev, totalCampaigns: prev.totalCampaigns - 1 }));
-    } catch (error) {
-      console.error('Error deleting campaign:', error);
-    }
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (
@@ -177,7 +90,7 @@ export default function DashboardPage() {
               { label: "Total Campaigns", value: stats.totalCampaigns.toString(), icon: Megaphone, iconBg: "bg-indigo-50 text-indigo-600 ring-indigo-100" },
               { label: "Ads Generated", value: stats.totalAds.toString(), icon: ImageIcon, iconBg: "bg-purple-50 text-purple-600 ring-purple-100" },
               { label: "Credits Remaining", value: stats.creditsRemaining.toString(), icon: Zap, iconBg: "bg-amber-50 text-amber-600 ring-amber-100" },
-              { label: "Avg CTR", value: "3.2%", icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600 ring-emerald-100" },
+              { label: "Avg CTR", value: "0%", icon: TrendingUp, iconBg: "bg-emerald-50 text-emerald-600 ring-emerald-100" },
             ].map((s) => (
               <div
                 key={s.label}
@@ -260,48 +173,38 @@ export default function DashboardPage() {
                       <th className="px-6 py-3">Campaign Name</th>
                       <th className="px-6 py-3">Platform</th>
                       <th className="px-6 py-3">Status</th>
-                      <th className="px-6 py-3">Ads</th>
+                      <th className="px-6 py-3">Creatives</th>
                       <th className="px-6 py-3">Date</th>
-                      <th className="px-6 py-3 text-right">Actions</th>
+                      <th className="px-6 py-3"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {campaigns.map((row) => (
-                      <tr key={row.id} className="transition hover:bg-slate-50/80">
-                        <td className="px-6 py-4 font-medium text-slate-900">{row.name}</td>
-                        <td className="px-6 py-4">
-                          <span className={platformBadge(row.platform)}>{Array.isArray(row.platform) ? row.platform[0] : row.platform}</span>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {campaigns.map((c) => (
+                      <tr key={c.id} className="group transition hover:bg-slate-50/50">
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <Link href={`/campaigns/${c.id}`} className="font-semibold text-slate-900 hover:text-indigo-600">
+                            {c.name}
+                          </Link>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={statusBadge(row.status)}>{row.status}</span>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          {platformBadge(c.platform)}
                         </td>
-                        <td className="px-6 py-4 text-slate-600">{row.ad_creatives?.[0]?.count || 0}</td>
-                        <td className="px-6 py-4 text-slate-600">{new Date(row.created_at).toLocaleDateString()}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex justify-end gap-1">
-                            <Link
-                              href={`/campaigns/${row.id}`}
-                              className="rounded-lg p-2 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 active:scale-95"
-                              aria-label="View"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                            <button
-                              type="button"
-                              className="rounded-lg p-2 text-slate-500 transition hover:bg-indigo-50 hover:text-indigo-600 active:scale-95"
-                              aria-label="Download"
-                            >
-                              <Download className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeCampaign(row.id)}
-                              className="rounded-lg p-2 text-slate-500 transition hover:bg-red-50 hover:text-red-600 active:scale-95"
-                              aria-label="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          {statusBadge(c.status)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-slate-600">
+                          {c.ad_creatives?.[0]?.count || 0} ads
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-slate-500">
+                          {new Date(c.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          <button
+                            onClick={() => removeCampaign(c.id)}
+                            className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}

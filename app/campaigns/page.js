@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
 import { 
   Search, 
   Plus, 
@@ -49,58 +48,28 @@ const colors = [
 ];
 
 export default function CampaignsPage() {
-  const { session, user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("All Status");
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading) {
-      fetchCampaigns();
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+        setLoading(false);
+      } else {
+        router.push('/login');
+      }
     }
-  }, [authLoading]);
-
-  async function fetchCampaigns() {
-    if (!supabase) {
-      console.log('Supabase not configured');
-      setCampaigns([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      if (!session && !user) return;
-
-      const userId = user?.id || session?.user?.id;
-      if (!userId) return;
-
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*, ad_creatives(count)')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCampaigns(data || []);
-    } catch (error) {
-      console.error('Error fetching campaigns:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [router]);
 
   async function deleteCampaign(id) {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
-    if (!supabase) {
-      setCampaigns(prev => prev.filter(c => c.id !== id));
-      return;
-    }
-    try {
-      const { error } = await supabase.from('campaigns').delete().eq('id', id);
-      if (error) throw error;
-      setCampaigns(prev => prev.filter(c => c.id !== id));
-    } catch (error) {
-      console.error('Error deleting campaign:', error);
-    }
+    setCampaigns(prev => prev.filter(c => c.id !== id));
   }
 
   const filteredCampaigns = campaigns.filter(c => {
@@ -109,6 +78,13 @@ export default function CampaignsPage() {
     return matchesSearch && matchesFilter;
   });
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -160,87 +136,86 @@ export default function CampaignsPage() {
             </Link>
           </div>
           
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredCampaigns.map((campaign, index) => (
-              <div
-                key={campaign.id}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-              >
-                {/* Gradient Header */}
-                <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1.5">
-                      {(Array.isArray(campaign.platform) ? campaign.platform : [campaign.platform]).map((p) => (
-                        <span key={p} className={platformBadge(p)}>{p}</span>
-                      ))}
-                    </div>
-                    <button className="rounded-lg bg-white/20 p-1.5 text-white backdrop-blur-md transition hover:bg-white/30">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition">
-                      {campaign.name}
-                    </h3>
-                    <span className={statusBadge(campaign.status)}>{campaign.status}</span>
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <Layers className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-700">{campaign.ad_creatives?.[0]?.count || 0} Ads</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <Calendar className="h-4 w-4 text-slate-400" />
-                      <span className="font-medium text-slate-700">{new Date(campaign.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-6 flex gap-2">
-                    <Link
-                      href={`/campaigns/${campaign.id}`}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-50 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      View
-                    </Link>
-                    <button className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95">
-                      <Download className="h-4 w-4" />
-                    </button>
-                    <button 
-                      onClick={() => deleteCampaign(campaign.id)}
-                      className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+          {filteredCampaigns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 text-5xl shadow-inner ring-1 ring-indigo-100">
+                <span aria-hidden>📣</span>
               </div>
-            ))}
-          </div>
+              <h3 className="text-lg font-semibold text-slate-900">No campaigns found</h3>
+              <p className="mt-2 max-w-sm text-sm text-slate-600">Start your first campaign to see it here.</p>
+              <button
+                type="button"
+                onClick={() => router.push("/campaign/new")}
+                className="mt-6 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.99]"
+              >
+                Create Your First Campaign
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredCampaigns.map((campaign, index) => (
+                <div
+                  key={campaign.id}
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                >
+                  {/* Gradient Header */}
+                  <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex gap-1.5">
+                        {(Array.isArray(campaign.platform) ? campaign.platform : [campaign.platform]).map((p) => (
+                          <span key={p} className={platformBadge(p)}>{p}</span>
+                        ))}
+                      </div>
+                      <button className="rounded-lg bg-white/20 p-1.5 text-white backdrop-blur-md transition hover:bg-white/30">
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
 
+                  {/* Content */}
+                  <div className="flex flex-1 flex-col p-5">
+                    <div className="flex items-start justify-between">
+                      <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                        {campaign.name}
+                      </h3>
+                      <span className={statusBadge(campaign.status)}>{campaign.status}</span>
+                    </div>
 
-          {/* Pagination */}
-          <div className="mt-12 flex items-center justify-center gap-2">
-            <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-900 transition hover:border-indigo-600 hover:text-indigo-600 shadow-sm">
-              1
-            </button>
-            <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:border-indigo-600 hover:text-indigo-600 shadow-sm">
-              2
-            </button>
-            <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:border-indigo-600 hover:text-indigo-600 shadow-sm">
-              3
-            </button>
-            <span className="mx-2 text-slate-400">...</span>
-            <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:border-indigo-600 hover:text-indigo-600 shadow-sm">
-              12
-            </button>
-          </div>
+                    <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <Layers className="h-4 w-4 text-slate-400" />
+                        <span className="font-medium text-slate-700">{campaign.ad_creatives?.[0]?.count || 0} Ads</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                        <span className="font-medium text-slate-700">{new Date(campaign.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-6 flex gap-2">
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-50 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        View
+                      </Link>
+                      <button className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95">
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => deleteCampaign(campaign.id)}
+                        className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
