@@ -14,7 +14,17 @@ import {
 } from "lucide-react";
 
 export default function Header({ title = "Dashboard", children }) {
+  const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    }
+  }, []);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
@@ -119,7 +129,7 @@ export default function Header({ title = "Dashboard", children }) {
           {/* Credits - Desktop */}
           <span className="hidden items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm sm:inline-flex">
             <Zap className="h-4 w-4" />
-            150 Credits
+            {user?.credits || 0} Credits
           </span>
 
           {/* User Profile Dropdown */}
@@ -132,7 +142,7 @@ export default function Header({ title = "Dashboard", children }) {
               aria-haspopup="menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
-                JD
+                {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
               </span>
               <ChevronDown className={`h-4 w-4 text-slate-500 transition ${menuOpen ? "rotate-180" : ""}`} />
             </button>
@@ -187,7 +197,7 @@ export default function Header({ title = "Dashboard", children }) {
       <div className="border-t border-slate-100 px-4 py-2 sm:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
           <Zap className="h-3.5 w-3.5" />
-          150 Credits
+          {user?.credits || 0} Credits
         </span>
       </div>
     </header>

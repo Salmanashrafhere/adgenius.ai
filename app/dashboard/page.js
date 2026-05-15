@@ -48,12 +48,20 @@ export default function DashboardPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
+      const campaignData = localStorage.getItem('adgenius_campaigns');
+      
       if (userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
+        
+        const parsedCampaigns = campaignData ? JSON.parse(campaignData) : [];
+        setCampaigns(parsedCampaigns);
+        
+        const totalAds = parsedCampaigns.reduce((acc, c) => acc + (c.ad_creatives?.[0]?.count || 0), 0);
+        
         setStats({
-          totalCampaigns: 0,
-          totalAds: 0,
+          totalCampaigns: parsedCampaigns.length,
+          totalAds: totalAds,
           creditsRemaining: parsedUser.credits || 0
         });
       } else {
@@ -64,7 +72,17 @@ export default function DashboardPage() {
   }, [router]);
 
   const removeCampaign = (id) => {
-    setCampaigns((prev) => prev.filter((c) => c.id !== id));
+    if (!confirm('Are you sure you want to delete this campaign?')) return;
+    const updatedCampaigns = campaigns.filter((c) => c.id !== id);
+    setCampaigns(updatedCampaigns);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedCampaigns));
+    
+    // Update stats
+    setStats(prev => ({
+      ...prev,
+      totalCampaigns: updatedCampaigns.length,
+      totalAds: updatedCampaigns.reduce((acc, c) => acc + (c.ad_creatives?.[0]?.count || 0), 0)
+    }));
   };
 
   if (loading) {

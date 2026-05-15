@@ -281,16 +281,35 @@ export default function NewCampaignPage() {
       await new Promise(r => setTimeout(r, 2000));
 
       // Mock campaign data
-      const mockData = {
-        product: { name: "Demo Product", description: "A great product for demo purposes." },
-        campaign: { name: "Demo Campaign", goal, platforms: selectedPlatforms },
+      const newCampaign = {
+        id: `camp_${Date.now()}`,
+        name: productUrl.replace(/^https?:\/\//, '').split('/')[0] || "New Campaign",
+        product_url: productUrl,
+        goal,
+        platforms: selectedPlatforms,
+        tone,
+        audienceTags,
+        status: 'ready',
+        created_at: new Date().toISOString(),
         creatives: [
           { id: 1, headline: "Boost Your Sales", body: "Use AdGenius to generate high-performing ads.", platform: selectedPlatforms[0] || "facebook" },
           { id: 2, headline: "Scale Faster", body: "AI-powered creative generation for modern brands.", platform: selectedPlatforms[0] || "instagram" }
-        ]
+        ],
+        ad_creatives: [{ count: 2 }] // For dashboard display
       };
 
-      setCampaignData(mockData);
+      // Save to localStorage
+      const existingCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+      localStorage.setItem('adgenius_campaigns', JSON.stringify([newCampaign, ...existingCampaigns]));
+
+      // Update user credits
+      if (user) {
+        const updatedUser = { ...user, credits: Math.max(0, (user.credits || 0) - 1) };
+        localStorage.setItem('adgenius_user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+
+      setCampaignData(newCampaign);
       setStep(4);
     } catch (err) {
       console.error(err);

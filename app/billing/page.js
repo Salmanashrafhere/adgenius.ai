@@ -33,19 +33,43 @@ const plans = [
 export default function BillingPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
+      const campaignData = localStorage.getItem('adgenius_campaigns');
+      
       if (userData) {
         setUser(JSON.parse(userData));
+        if (campaignData) {
+          setCampaigns(JSON.parse(campaignData));
+        }
         setLoading(false);
       } else {
         router.push('/login');
       }
     }
   }, [router]);
+
+  const totalAds = campaigns.reduce((acc, c) => acc + (c.ad_creatives?.[0]?.count || 0), 0);
+  const campaignLimit = user?.plan === 'Growth' ? 30 : user?.plan === 'Starter' ? 10 : 1;
+  const adLimit = user?.plan === 'Growth' ? 500 : user?.plan === 'Starter' ? 100 : 10;
+  const creditLimit = user?.plan === 'Growth' ? 50 : user?.plan === 'Starter' ? 25 : 10;
+
+  const upgradePlan = (planName) => {
+    if (typeof window !== 'undefined' && user) {
+      const updatedUser = { 
+        ...user, 
+        plan: planName,
+        credits: planName === 'Growth' ? 50 : planName === 'Starter' ? 25 : 10
+      };
+      localStorage.setItem('adgenius_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      alert(`Success! You have been upgraded to the ${planName} plan.`);
+    }
+  };
 
   if (loading) {
     return (
@@ -94,28 +118,28 @@ export default function BillingPage() {
                 <div>
                   <div className="mb-1.5 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-700">Campaigns</span>
-                    <span className="text-slate-500">0 / 1</span>
+                    <span className="text-slate-500">{campaigns.length} / {campaignLimit}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: "0%" }} />
+                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, (campaigns.length / campaignLimit) * 100)}%` }} />
                   </div>
                 </div>
                 <div>
                   <div className="mb-1.5 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-700">Ads Generated</span>
-                    <span className="text-slate-500">0 / 10</span>
+                    <span className="text-slate-500">{totalAds} / {adLimit}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: "0%" }} />
+                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, (totalAds / adLimit) * 100)}%` }} />
                   </div>
                 </div>
                 <div>
                   <div className="mb-1.5 flex items-center justify-between text-sm">
                     <span className="font-medium text-slate-700">Credits Remaining</span>
-                    <span className="text-slate-500">{user?.credits || 0} / 10</span>
+                    <span className="text-slate-500">{user?.credits || 0} / {creditLimit}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${(user?.credits || 0) * 10}%` }} />
+                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, ((user?.credits || 0) / creditLimit) * 100)}%` }} />
                   </div>
                 </div>
               </div>
@@ -181,7 +205,10 @@ export default function BillingPage() {
                               Current Plan
                             </button>
                           ) : (
-                            <button className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95">
+                            <button 
+                              onClick={() => upgradePlan(plan.name)}
+                              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
+                            >
                               {plan.name === "Pro" || plan.name === "Growth" || plan.name === "Starter" ? "Upgrade" : "Select"}
                             </button>
                           )}

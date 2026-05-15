@@ -58,8 +58,13 @@ export default function CampaignsPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
+      const campaignData = localStorage.getItem('adgenius_campaigns');
+      
       if (userData) {
         setUser(JSON.parse(userData));
+        if (campaignData) {
+          setCampaigns(JSON.parse(campaignData));
+        }
         setLoading(false);
       } else {
         router.push('/login');
@@ -69,7 +74,9 @@ export default function CampaignsPage() {
 
   async function deleteCampaign(id) {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
-    setCampaigns(prev => prev.filter(c => c.id !== id));
+    const updatedCampaigns = campaigns.filter(c => c.id !== id);
+    setCampaigns(updatedCampaigns);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedCampaigns));
   }
 
   const filteredCampaigns = campaigns.filter(c => {
