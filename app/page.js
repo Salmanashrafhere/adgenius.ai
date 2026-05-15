@@ -129,6 +129,7 @@ export default function Home() {
             <div className="mt-4 flex flex-col gap-2">
               <Link
                 href="/login"
+                prefetch={false}
                 className="w-full rounded-lg border border-slate-200 bg-white py-2.5 text-center text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
                 onClick={() => setMobileOpen(false)}
               >
@@ -136,6 +137,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/signup"
+                prefetch={false}
                 className="w-full rounded-lg bg-indigo-600 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-500"
                 onClick={() => setMobileOpen(false)}
               >
@@ -169,6 +171,7 @@ export default function Home() {
               <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <Link
                   href="/signup"
+                  prefetch={false}
                   className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-xl shadow-indigo-600/30 transition hover:-translate-y-0.5 hover:bg-indigo-500 hover:shadow-2xl hover:shadow-indigo-600/35 sm:w-auto"
                 >
                   Start Free Trial
@@ -512,6 +515,7 @@ export default function Home() {
             <p className="mx-auto mt-4 max-w-xl text-lg text-indigo-100">Join thousands of brands using AdGenius to ship winning creative faster.</p>
             <Link
               href="/signup"
+              prefetch={false}
               className="mt-10 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-bold text-indigo-600 shadow-xl transition hover:-translate-y-0.5 hover:bg-indigo-50 hover:shadow-2xl"
             >
               Start Free Trial
@@ -526,7 +530,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-12">
             <div className="lg:col-span-4">
-              <Link href="/" className="flex items-center gap-2 font-semibold text-white">
+              <Link href="/" prefetch={false} className="flex items-center gap-2 font-semibold text-white">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/20">
                   <Sparkles className="h-5 w-5 text-indigo-300" />
                 </span>

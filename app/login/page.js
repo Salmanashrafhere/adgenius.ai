@@ -16,17 +16,30 @@
      setError('') 
      
      try { 
+       const response = await fetch('/api/auth/login', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email, password })
+       })
+
+       const data = await response.json()
+
+       if (!response.ok) {
+         throw new Error(data.error || 'Login failed')
+       }
+
        if (typeof window !== 'undefined') { 
          localStorage.setItem('adgenius_user', JSON.stringify({ 
-           email, 
-           name: email.split('@')[0], 
-           plan: 'free', 
-           credits: 10 
+           id: data.user.id,
+           email: data.user.email, 
+           name: data.user.user_metadata?.name || email.split('@')[0], 
+           plan: data.user.user_metadata?.plan || 'free', 
+           credits: data.user.user_metadata?.credits || 10 
          })) 
          router.push('/dashboard') 
        } 
      } catch (err) { 
-       setError('Something went wrong. Please try again.') 
+       setError(err.message || 'Something went wrong. Please try again.') 
      } finally { 
        setLoading(false) 
      } 
@@ -78,12 +91,12 @@
            </button> 
          </form> 
          
-         <p className="text-center text-gray-500 text-sm mt-6"> 
+         <div className="mt-8 text-center text-sm text-slate-500"> 
            Don't have an account?{' '} 
-           <Link href="/signup" className="text-indigo-600 font-medium hover:underline"> 
-             Sign up 
+           <Link href="/signup" prefetch={false} className="text-indigo-600 font-medium hover:underline"> 
+             Sign up for free 
            </Link> 
-         </p> 
+         </div> 
        </div> 
      </div> 
    ) 

@@ -15,8 +15,10 @@ import {
   Trash2,
   Calendar,
   Layers,
-  MoreVertical
+  MoreVertical,
+  X,
 } from "lucide-react";
+import { ToastContainer } from "@/components/Toast";
 
 function statusBadge(status) {
   const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold";
@@ -26,6 +28,7 @@ function statusBadge(status) {
 }
 
 function platformBadge(platform) {
+  const p = Array.isArray(platform) ? platform[0] : platform;
   const colors = {
     facebook: "bg-blue-50 text-blue-700",
     instagram: "bg-fuchsia-50 text-fuchsia-700",
@@ -33,7 +36,7 @@ function platformBadge(platform) {
     google: "bg-sky-50 text-sky-700",
     all: "bg-indigo-50 text-indigo-700",
   };
-  const c = colors[platform?.toLowerCase()] || "bg-slate-100 text-slate-700";
+  const c = colors[p?.toLowerCase()] || "bg-slate-100 text-slate-700";
   return `inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ring-slate-200/10 ${c}`;
 }
 
@@ -51,56 +54,73 @@ export default function CampaignsPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState("All Status");
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
-      const campaignData = localStorage.getItem('adgenius_campaigns');
       
       if (userData) {
-        setUser(JSON.parse(userData));
-        if (campaignData) {
-          setCampaigns(JSON.parse(campaignData));
-        }
-        setLoading(false);
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        
+        // Fetch campaigns from API
+        const fetchCampaigns = async () => {
+          try {
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const data = await response.json();
+            if (response.ok && data.success) {
+              setCampaigns(data.campaigns);
+            } else {
+              // Fallback to local storage
+              const campaignData = localStorage.getItem('adgenius_campaigns');
+              if (campaignData) setCampaigns(JSON.parse(campaignData));
+            }
+          } catch (err) {
+            console.error('Failed to fetch campaigns:', err);
+            const campaignData = localStorage.getItem('adgenius_campaigns');
+            if (campaignData) setCampaigns(JSON.parse(campaignData));
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        fetchCampaigns();
       } else {
         router.push('/login');
       }
     }
   }, [router]);
 
-  async function deleteCampaign(id) {
+  const deleteCampaign = (id) => {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
-    const updatedCampaigns = campaigns.filter(c => c.id !== id);
-    setCampaigns(updatedCampaigns);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedCampaigns));
-  }
+    const updated = campaigns.filter(c => c.id !== id);
+    setCampaigns(updated);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+    showToast("Campaign deleted", "success");
+  };
 
-  const filteredCampaigns = campaigns.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === "All Status" || c.status === filter.toLowerCase();
-    return matchesSearch && matchesFilter;
-  });
+  const filteredCampaigns = campaigns.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      <ToastContainer toasts={toasts} setToasts={setToasts} />
       <Sidebar />
 
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
         <Header title="My Campaigns" />
           
-        {/* Search & Filter Bar */}
         <div className="flex flex-col gap-4 border-b border-slate-100 bg-white/50 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:px-6 lg:px-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -112,48 +132,27 @@ export default function CampaignsPage() {
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <select 
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                className="appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-4 pr-10 text-sm font-medium focus:border-indigo-600 focus:outline-none"
-              >
-                <option>All Status</option>
-                <option>Ready</option>
-                <option>Processing</option>
-                <option>Failed</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            </div>
-            <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-              <Filter className="h-4 w-4" />
-            </button>
-          </div>
+          <Link
+            href="/campaign/new"
+            prefetch={false}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            New Campaign
+          </Link>
         </div>
 
         <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mb-6 flex justify-end">
-            <Link
-              href="/campaign/new"
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              New Campaign
-            </Link>
-          </div>
-          
           {filteredCampaigns.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 text-5xl shadow-inner ring-1 ring-indigo-100">
+              <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-indigo-50 text-5xl shadow-inner">
                 <span aria-hidden>📣</span>
               </div>
               <h3 className="text-lg font-semibold text-slate-900">No campaigns found</h3>
               <p className="mt-2 max-w-sm text-sm text-slate-600">Start your first campaign to see it here.</p>
               <button
-                type="button"
                 onClick={() => router.push("/campaign/new")}
-                className="mt-6 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-[0.99]"
+                className="mt-6 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500"
               >
                 Create Your First Campaign
               </button>
@@ -161,60 +160,39 @@ export default function CampaignsPage() {
           ) : (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {filteredCampaigns.map((campaign, index) => (
-                <div
-                  key={campaign.id}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
-                >
-                  {/* Gradient Header */}
+                <div key={campaign.id} className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
                   <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5">
-                        {(Array.isArray(campaign.platform) ? campaign.platform : [campaign.platform]).map((p) => (
-                          <span key={p} className={platformBadge(p)}>{p}</span>
-                        ))}
+                        <span className={platformBadge(campaign.platform)}>{campaign.platform[0]}</span>
                       </div>
-                      <button className="rounded-lg bg-white/20 p-1.5 text-white backdrop-blur-md transition hover:bg-white/30">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
                     </div>
                   </div>
-
-                  {/* Content */}
                   <div className="flex flex-1 flex-col p-5">
                     <div className="flex items-start justify-between">
-                      <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition">
-                        {campaign.name}
-                      </h3>
+                      <h3 className="font-bold text-slate-900 group-hover:text-indigo-600 transition">{campaign.name}</h3>
                       <span className={statusBadge(campaign.status)}>{campaign.status}</span>
                     </div>
-
                     <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-50 pt-4">
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
                         <Layers className="h-4 w-4 text-slate-400" />
-                        <span className="font-medium text-slate-700">{campaign.ad_creatives?.[0]?.count || 0} Ads</span>
+                        <span className="font-medium text-slate-700">{campaign.adsCount || 0} Ads</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
                         <Calendar className="h-4 w-4 text-slate-400" />
-                        <span className="font-medium text-slate-700">{new Date(campaign.created_at).toLocaleDateString()}</span>
+                        <span className="font-medium text-slate-700">{new Date(campaign.createdAt || campaign.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-
-                    {/* Actions */}
                     <div className="mt-6 flex gap-2">
                       <Link
                         href={`/campaigns/${campaign.id}`}
+                        prefetch={false}
                         className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-50 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Link>
-                      <button className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 active:scale-95">
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <button 
-                        onClick={() => deleteCampaign(campaign.id)}
-                        className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
-                      >
+                      <button onClick={() => deleteCampaign(campaign.id)} className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>

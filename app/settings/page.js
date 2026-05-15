@@ -20,13 +20,12 @@ import {
   Smartphone,
   Laptop,
 } from "lucide-react";
+import { ToastContainer } from "@/components/Toast";
 
 const tabs = [
   { id: "profile", label: "Profile", icon: User },
-  { id: "brand", label: "Brand", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "security", label: "Security", icon: Shield },
-  { id: "api", label: "API", icon: Code },
 ];
 
 export default function SettingsPage() {
@@ -34,12 +33,26 @@ export default function SettingsPage() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState([]);
+
+  // Form states
+  const [profileForm, setProfileForm] = useState({ name: "", email: "" });
+  const [notifForm, setNotifForm] = useState({ emailReady: true, emailTips: false, emailUpdates: true });
+  const [securityForm, setSecurityForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+  const showToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        setProfileForm({ name: parsed.name || "", email: parsed.email || "" });
+        setNotifForm(parsed.notifications || { emailReady: true, emailTips: false, emailUpdates: true });
         setLoading(false);
       } else {
         router.push('/login');
@@ -47,23 +60,46 @@ export default function SettingsPage() {
     }
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-      </div>
-    );
-  }
+  const saveProfile = (e) => {
+    e.preventDefault();
+    const updated = { ...user, name: profileForm.name, email: profileForm.email };
+    localStorage.setItem('adgenius_user', JSON.stringify(updated));
+    setUser(updated);
+    showToast("Profile updated successfully", "success");
+  };
+
+  const saveNotifications = (newNotifs) => {
+    const updated = { ...user, notifications: newNotifs };
+    localStorage.setItem('adgenius_user', JSON.stringify(updated));
+    setNotifForm(newNotifs);
+    showToast("Preferences saved", "success");
+  };
+
+  const updatePassword = (e) => {
+    e.preventDefault();
+    if (securityForm.newPassword !== securityForm.confirmPassword) {
+      return showToast("Passwords do not match", "error");
+    }
+    if (securityForm.newPassword.length < 6) {
+      return showToast("Password too short", "error");
+    }
+    showToast("Password updated successfully", "success");
+    setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  };
+
+  if (loading) return null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      <ToastContainer toasts={toasts} setToasts={setToasts} />
       <Sidebar />
 
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
-        <Header title="Settings">
-          {/* Tabs */}
-          <div className="flex overflow-x-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex gap-8 border-b border-transparent">
+        <Header title="Settings" />
+
+        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="mb-8 flex gap-8 border-b border-slate-200">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -71,10 +107,8 @@ export default function SettingsPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 border-b-2 py-4 text-sm font-medium transition ${
-                      isActive
-                        ? "border-indigo-600 text-indigo-600"
-                        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                    className={`flex items-center gap-2 border-b-2 py-4 text-sm font-bold transition ${
+                      isActive ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -83,194 +117,104 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-          </div>
-        </Header>
 
-        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-4xl">
             {activeTab === "profile" && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">Personal Information</h2>
-                  <div className="mt-8 flex flex-col gap-8 sm:flex-row sm:items-start">
-                    <div className="relative h-24 w-24 shrink-0">
-                      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-2xl font-bold text-white shadow-lg">
-                        {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
-                      </div>
-                      <button className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-slate-600 transition hover:bg-slate-200">
-                        <Camera className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Full Name</label>
-                        <input
-                          type="text"
-                          defaultValue={user?.name || ""}
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Email Address</label>
-                        <div className="relative">
-                          <input
-                            type="email"
-                            disabled
-                            defaultValue={user?.email || ""}
-                            className="w-full rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 pl-3 pr-10 text-sm text-slate-500"
-                          />
-                          <Lock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Phone Number</label>
-                        <input
-                          type="tel"
-                          defaultValue="+1 (555) 000-0000"
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Company Name</label>
-                        <input
-                          type="text"
-                          defaultValue="AdGenius AI"
-                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-                    <button className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.99]">
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "brand" && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">Brand Identity</h2>
-                  <div className="mt-8 space-y-8">
+              <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl">
+                <h2 className="text-xl font-bold mb-6">Personal Information</h2>
+                <form onSubmit={saveProfile} className="space-y-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Brand Logo</label>
-                      <div className="mt-2 flex items-center gap-6">
-                        <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-200">
-                          <Upload className="h-6 w-6 text-slate-400" />
-                        </div>
-                        <div className="flex-1 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center transition hover:border-indigo-300">
-                          <p className="text-sm text-slate-600">
-                            <span className="font-semibold text-indigo-600">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">PNG, JPG or SVG (max. 2MB)</p>
-                        </div>
-                      </div>
+                      <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">Full Name</label>
+                      <input
+                        type="text"
+                        value={profileForm.name}
+                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-100 py-3 px-4 focus:border-indigo-600 outline-none transition-all"
+                      />
                     </div>
-
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Primary Color</label>
-                        <div className="flex items-center gap-3">
-                          <input type="color" defaultValue="#4f46e5" className="h-10 w-10 cursor-pointer overflow-hidden rounded-lg border-none" />
-                          <input type="text" defaultValue="#4F46E5" className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Secondary Color</label>
-                        <div className="flex items-center gap-3">
-                          <input type="color" defaultValue="#9333ea" className="h-10 w-10 cursor-pointer overflow-hidden rounded-lg border-none" />
-                          <input type="text" defaultValue="#9333EA" className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Default Tone of Voice</label>
-                      <select className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20">
-                        <option>Professional</option>
-                        <option>Witty & Playful</option>
-                        <option>Urgent & Direct</option>
-                        <option>Friendly & Helpful</option>
-                        <option>Luxurious & Elegant</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium text-slate-700">Default Platforms</label>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        {["Facebook", "Instagram", "TikTok", "Google"].map((p) => (
-                          <label key={p} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-3 transition hover:bg-slate-50">
-                            <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600/20" />
-                            <span className="text-sm text-slate-700">{p}</span>
-                          </label>
-                        ))}
-                      </div>
+                    <div>
+                      <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">Email Address</label>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-100 py-3 px-4 focus:border-indigo-600 outline-none transition-all"
+                      />
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-                    <button className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.99]">
-                      Save Brand Settings
-                    </button>
-                  </div>
-                </div>
+                  <button type="submit" className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-indigo-500 transition-all active:scale-95">
+                    Save Changes
+                  </button>
+                </form>
               </div>
             )}
 
             {activeTab === "notifications" && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">Email Notifications</h2>
-                  <p className="text-sm text-slate-500">Choose which updates you want to receive via email.</p>
-                  
-                  <div className="mt-8 divide-y divide-slate-100">
-                    {[
-                      { id: "ready", label: "Campaign Ready", desc: "Get notified when your ads are generated.", active: true },
-                      { id: "failed", label: "Campaign Failed", desc: "Receive alerts if there's an issue with generation.", active: true },
-                      { id: "tips", label: "Weekly Tips", desc: "Performance insights and optimization strategies.", active: false },
-                      { id: "updates", label: "Product Updates", desc: "New features and platform improvements.", active: true },
-                      { id: "billing", label: "Billing Alerts", desc: "Invoices and subscription changes.", active: true },
-                    ].map((item) => (
-                      <div key={item.id} className="flex items-center justify-between py-4">
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                          <p className="text-xs text-slate-500">{item.desc}</p>
-                        </div>
-                        <label className="relative inline-flex cursor-pointer items-center">
-                          <input type="checkbox" defaultChecked={item.active} className="peer sr-only" />
-                          <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-600/20" />
-                        </label>
+              <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl">
+                <h2 className="text-xl font-bold mb-6">Email Notifications</h2>
+                <div className="space-y-6">
+                  {[
+                    { id: "emailReady", label: "Campaign Ready", desc: "Get notified when your ads are generated.", value: notifForm.emailReady },
+                    { id: "emailTips", label: "Weekly Tips", desc: "Growth marketing strategies and insights.", value: notifForm.emailTips },
+                    { id: "emailUpdates", label: "Product Updates", desc: "New features and platform improvements.", value: notifForm.emailUpdates },
+                  ].map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                      <div>
+                        <p className="font-bold text-slate-900">{item.label}</p>
+                        <p className="text-sm text-slate-500">{item.desc}</p>
                       </div>
-                    ))}
-                  </div>
-                  <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-                    <button className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.99]">
-                      Save Preferences
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => saveNotifications({ ...notifForm, [item.id]: !item.value })}
+                        className={`w-12 h-6 rounded-full transition-all relative ${item.value ? "bg-indigo-600" : "bg-slate-300"}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.value ? "left-7" : "left-1"}`} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {activeTab === "security" && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-900">Security Settings</h2>
-                  <div className="mt-8 space-y-8">
-                    <div className="grid gap-6 sm:grid-cols-2">
-                      <div className="col-span-full space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Current Password</label>
-                        <input type="password" placeholder="••••••••" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-                      </div>
+              <div className="rounded-3xl border border-slate-100 bg-white p-8 shadow-xl">
+                <h2 className="text-xl font-bold mb-6">Security Settings</h2>
+                <form onSubmit={updatePassword} className="space-y-6">
+                  <div className="max-w-md space-y-4">
+                    <div>
+                      <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">Current Password</label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={securityForm.currentPassword}
+                        onChange={(e) => setSecurityForm({ ...securityForm, currentPassword: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-100 py-3 px-4 focus:border-indigo-600 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">New Password</label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={securityForm.newPassword}
+                        onChange={(e) => setSecurityForm({ ...securityForm, newPassword: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-100 py-3 px-4 focus:border-indigo-600 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block mb-2">Confirm New Password</label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={securityForm.confirmPassword}
+                        onChange={(e) => setSecurityForm({ ...securityForm, confirmPassword: e.target.value })}
+                        className="w-full rounded-xl border-2 border-slate-100 py-3 px-4 focus:border-indigo-600 outline-none transition-all"
+                      />
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-                    <button className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-[0.99]">
-                      Update Password
-                    </button>
-                  </div>
-                </div>
+                  <button type="submit" className="bg-indigo-600 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-indigo-500 transition-all active:scale-95">
+                    Update Password
+                  </button>
+                </form>
               </div>
             )}
           </div>

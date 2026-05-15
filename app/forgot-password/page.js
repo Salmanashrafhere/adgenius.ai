@@ -35,6 +35,7 @@ export default function ForgotPasswordPage() {
       <div className="mx-auto flex w-full max-w-md flex-col items-center">
         <Link
           href="/"
+          prefetch={false}
           className="mb-8 flex items-center gap-2 font-semibold tracking-tight text-slate-900 transition hover:opacity-90"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 ring-1 ring-indigo-100">
@@ -108,6 +109,7 @@ export default function ForgotPasswordPage() {
 
           <Link
             href="/login"
+            prefetch={false}
             className="mt-8 flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 transition hover:text-indigo-500"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />

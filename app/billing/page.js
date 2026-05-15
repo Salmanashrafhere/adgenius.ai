@@ -5,47 +5,33 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { 
-  CreditCard, 
-  Download, 
-  Plus, 
+  Zap, 
   Check, 
-  ArrowRight,
-  Zap,
-  Clock,
-  ShieldCheck
+  Crown, 
+  CreditCard, 
+  History, 
+  ArrowUpRight,
+  TrendingUp,
+  Sparkles,
 } from "lucide-react";
-
-const billingHistory = [
-  { id: "INV-001", date: "May 12, 2026", description: "Growth Plan - Monthly", amount: "$149.00", status: "Paid" },
-  { id: "INV-002", date: "Apr 12, 2026", description: "Growth Plan - Monthly", amount: "$149.00", status: "Paid" },
-  { id: "INV-003", date: "Mar 12, 2026", description: "Growth Plan - Monthly", amount: "$149.00", status: "Paid" },
-  { id: "INV-004", date: "Feb 12, 2026", description: "Growth Plan - Monthly", amount: "$149.00", status: "Paid" },
-  { id: "INV-005", date: "Jan 12, 2026", description: "Growth Plan - Monthly", amount: "$149.00", status: "Pending" },
-];
-
-const plans = [
-  { name: "Free", price: "$0", campaigns: "1", ads: "10", video: "No", support: "Community", team: "1", current: true },
-  { name: "Starter", price: "$49", campaigns: "10", ads: "100", video: "5", support: "Email", team: "2", current: false },
-  { name: "Growth", price: "$149", campaigns: "30", ads: "500", video: "25", support: "Priority", team: "5", current: false },
-  { name: "Pro", price: "$399", campaigns: "Unlimited", ads: "Unlimited", video: "Unlimited", support: "24/7 Dedicated", team: "Unlimited", current: false },
-];
+import { ToastContainer } from "@/components/Toast";
 
 export default function BillingPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
-      const campaignData = localStorage.getItem('adgenius_campaigns');
-      
       if (userData) {
         setUser(JSON.parse(userData));
-        if (campaignData) {
-          setCampaigns(JSON.parse(campaignData));
-        }
         setLoading(false);
       } else {
         router.push('/login');
@@ -53,203 +39,98 @@ export default function BillingPage() {
     }
   }, [router]);
 
-  const totalAds = campaigns.reduce((acc, c) => acc + (c.ad_creatives?.[0]?.count || 0), 0);
-  const campaignLimit = user?.plan === 'Growth' ? 30 : user?.plan === 'Starter' ? 10 : 1;
-  const adLimit = user?.plan === 'Growth' ? 500 : user?.plan === 'Starter' ? 100 : 10;
-  const creditLimit = user?.plan === 'Growth' ? 50 : user?.plan === 'Starter' ? 25 : 10;
-
-  const upgradePlan = (planName) => {
-    if (typeof window !== 'undefined' && user) {
-      const updatedUser = { 
-        ...user, 
-        plan: planName,
-        credits: planName === 'Growth' ? 50 : planName === 'Starter' ? 25 : 10
-      };
-      localStorage.setItem('adgenius_user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      alert(`Success! You have been upgraded to the ${planName} plan.`);
-    }
+  const handleUpgrade = (plan) => {
+    showToast(`${plan} plan - Coming Soon!`, "info");
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-      </div>
-    );
-  }
+  if (loading) return null;
+
+  const stats = [
+    { label: "Credits Used", value: (10 - (user?.credits || 0)).toString(), total: "10", icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Campaigns", value: (user?.campaigns_count || 0).toString(), total: "Unlimited", icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Current Plan", value: user?.plan || "Free Trial", total: null, icon: Crown, color: "text-purple-600", bg: "bg-purple-50" },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      <ToastContainer toasts={toasts} setToasts={setToasts} />
       <Sidebar />
 
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
-        <Header title="Billing & Subscription" />
+        <Header title="Billing & Plans" />
 
-        <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-          {/* Top Grid: Current Plan & Usage */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Current Plan Card */}
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Current Plan</h2>
-                <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-700 uppercase tracking-wider">
-                  {user?.plan || "Free"} Plan
-                </span>
-              </div>
-              <div className="mt-4">
-                <p className="text-3xl font-bold text-slate-900">$0<span className="text-sm font-normal text-slate-500">/month</span></p>
-                <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  No upcoming charges.
+        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl">
+            {/* Usage Overview */}
+            <div className="mb-12 grid gap-6 sm:grid-cols-3">
+              {stats.map((s) => (
+                <div key={s.label} className="rounded-3xl border border-slate-100 bg-white p-6 shadow-xl">
+                  <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${s.bg} ${s.color}`}>
+                    <s.icon className="h-6 w-6" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{s.label}</p>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <p className="text-3xl font-black text-slate-900">{s.value}</p>
+                    {s.total && <p className="text-sm font-bold text-slate-400">/ {s.total}</p>}
+                  </div>
+                  {s.total && s.total !== "Unlimited" && (
+                    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div 
+                        className="h-full bg-indigo-600 transition-all duration-1000" 
+                        style={{ width: `${(parseInt(s.value) / parseInt(s.total)) * 100}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="mt-6 flex items-center gap-4">
-                <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 active:scale-95">
-                  Upgrade Plan
-                </button>
-              </div>
+              ))}
             </div>
 
-            {/* Usage Meter */}
-            <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Usage this month</h2>
-              <div className="mt-6 space-y-5">
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">Campaigns</span>
-                    <span className="text-slate-500">{campaigns.length} / {campaignLimit}</span>
+            {/* Plans Grid */}
+            <div className="mb-12">
+              <div className="mb-8 text-center">
+                <h2 className="text-3xl font-bold tracking-tight">Simple, transparent pricing</h2>
+                <p className="mt-2 text-lg text-slate-600">Choose the plan that's right for your business.</p>
+              </div>
+
+              <div className="grid gap-8 lg:grid-cols-3">
+                {[
+                  { name: "Starter", price: "$29", credits: "50", features: ["50 AI Ad Credits", "Standard Support", "All Platforms", "Strategy Insights"] },
+                  { name: "Professional", price: "$79", credits: "200", features: ["200 AI Ad Credits", "Priority Support", "Custom Brand Voice", "Advanced Analytics"], popular: true },
+                  { name: "Enterprise", price: "$199", credits: "Unlimited", features: ["Unlimited Credits", "Dedicated Account Manager", "API Access", "Custom Integrations"] },
+                ].map((plan) => (
+                  <div key={plan.name} className={`relative flex flex-col rounded-3xl border p-8 shadow-xl transition hover:-translate-y-1 ${plan.popular ? "border-indigo-600 ring-4 ring-indigo-600/10" : "border-slate-100 bg-white"}`}>
+                    {plan.popular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-4 py-1 text-xs font-bold text-white uppercase tracking-widest">Most Popular</div>
+                    )}
+                    <h3 className="text-xl font-bold">{plan.name}</h3>
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="text-4xl font-black">{plan.price}</span>
+                      <span className="text-slate-500 font-bold">/mo</span>
+                    </div>
+                    <p className="mt-2 text-sm font-bold text-indigo-600 uppercase tracking-widest">{plan.credits} Credits</p>
+                    
+                    <ul className="mt-8 flex-1 space-y-4">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                          <Check className="h-5 w-5 text-emerald-500 shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      onClick={() => handleUpgrade(plan.name)}
+                      className={`mt-10 w-full rounded-2xl py-4 font-bold transition-all active:scale-95 ${
+                        plan.popular ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/30 hover:bg-indigo-500" : "bg-slate-900 text-white hover:bg-slate-800"
+                      }`}
+                    >
+                      Upgrade to {plan.name}
+                    </button>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, (campaigns.length / campaignLimit) * 100)}%` }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">Ads Generated</span>
-                    <span className="text-slate-500">{totalAds} / {adLimit}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, (totalAds / adLimit) * 100)}%` }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-700">Credits Remaining</span>
-                    <span className="text-slate-500">{user?.credits || 0} / {creditLimit}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-indigo-600 transition-all" style={{ width: `${Math.min(100, ((user?.credits || 0) / creditLimit) * 100)}%` }} />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
-
-          {/* Plan Comparison Table */}
-          <section className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">Compare Plans</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px] text-left">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="px-6 py-4 text-sm font-semibold text-slate-900">Features</th>
-                    {plans.map((plan) => {
-                      const isCurrent = plan.name.toLowerCase() === (user?.plan || "free").toLowerCase();
-                      return (
-                        <th key={plan.name} className={`px-6 py-4 text-center ${isCurrent ? "bg-indigo-50/30" : ""}`}>
-                          <div className="flex flex-col items-center">
-                            <span className="text-sm font-bold text-slate-900">{plan.name}</span>
-                            <span className="mt-1 text-lg font-bold text-indigo-600">{plan.price}</span>
-                            {isCurrent && (
-                              <span className="mt-1 inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">
-                                Current
-                              </span>
-                            )}
-                          </div>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-sm">
-                  {[
-                    { label: "Campaigns", key: "campaigns" },
-                    { label: "Ads", key: "ads" },
-                    { label: "Video Ads", key: "video" },
-                    { label: "Support", key: "support" },
-                    { label: "Team Members", key: "team" },
-                  ].map((row) => (
-                    <tr key={row.label} className="hover:bg-slate-50/50 transition">
-                      <td className="px-6 py-4 font-medium text-slate-700">{row.label}</td>
-                      {plans.map((plan) => {
-                        const isCurrent = plan.name.toLowerCase() === (user?.plan || "free").toLowerCase();
-                        return (
-                          <td key={plan.name} className={`px-6 py-4 text-center text-slate-600 ${isCurrent ? "bg-indigo-50/30" : ""}`}>
-                            {plan[row.key]}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  <tr>
-                    <td className="px-6 py-6" />
-                    {plans.map((plan) => {
-                      const isCurrent = plan.name.toLowerCase() === (user?.plan || "free").toLowerCase();
-                      return (
-                        <td key={plan.name} className={`px-6 py-6 text-center ${isCurrent ? "bg-indigo-50/30" : ""}`}>
-                          {isCurrent ? (
-                            <button disabled className="w-full rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400">
-                              Current Plan
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => upgradePlan(plan.name)}
-                              className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
-                            >
-                              {plan.name === "Pro" || plan.name === "Growth" || plan.name === "Starter" ? "Upgrade" : "Select"}
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Payment Methods */}
-          <section className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">Payment Methods</h2>
-              <button className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition hover:text-indigo-500">
-                <Plus className="h-4 w-4" />
-                Add new card
-              </button>
-            </div>
-            <div className="mt-6">
-              <p className="text-sm text-slate-500">No payment methods added yet.</p>
-            </div>
-          </section>
-
-          {/* Billing History */}
-          <section className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <div className="border-b border-slate-100 px-6 py-4">
-              <h2 className="text-lg font-semibold text-slate-900">Billing History</h2>
-            </div>
-            <div className="px-6 py-12 text-center">
-              <div className="mb-3 flex justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-50 text-slate-400 ring-1 ring-slate-200">
-                  <CreditCard className="h-6 w-6" />
-                </div>
-              </div>
-              <h3 className="text-sm font-medium text-slate-900">No billing history</h3>
-              <p className="mt-1 text-sm text-slate-500">You haven't made any purchases yet.</p>
-            </div>
-          </section>
         </main>
       </div>
     </div>

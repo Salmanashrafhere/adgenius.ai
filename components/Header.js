@@ -154,6 +154,7 @@ export default function Header({ title = "Dashboard", children }) {
               >
                 <Link
                   href="/settings"
+                  prefetch={false}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -162,6 +163,7 @@ export default function Header({ title = "Dashboard", children }) {
                 </Link>
                 <Link
                   href="/billing"
+                  prefetch={false}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -170,6 +172,7 @@ export default function Header({ title = "Dashboard", children }) {
                 </Link>
                 <Link
                   href="/settings"
+                  prefetch={false}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -179,6 +182,7 @@ export default function Header({ title = "Dashboard", children }) {
                 <div className="my-1 border-t border-slate-100" />
                 <Link
                   href="/login"
+                  prefetch={false}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50"
                   onClick={() => setMenuOpen(false)}
                 >

@@ -17,17 +17,30 @@
      setError('') 
      
      try { 
+       const response = await fetch('/api/auth/signup', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ name, email, password })
+       })
+
+       const data = await response.json()
+
+       if (!response.ok) {
+         throw new Error(data.error || 'Signup failed')
+       }
+
        if (typeof window !== 'undefined') { 
          localStorage.setItem('adgenius_user', JSON.stringify({ 
-           name, 
-           email, 
-           plan: 'free', 
-           credits: 10 
+           id: data.user.id,
+           name: data.user.name || name, 
+           email: data.user.email || email, 
+           plan: data.user.plan || 'free', 
+           credits: data.user.credits_remaining || 10 
          })) 
          router.push('/dashboard') 
        } 
      } catch (err) { 
-       setError('Something went wrong. Please try again.') 
+       setError(err.message || 'Something went wrong. Please try again.') 
      } finally { 
        setLoading(false) 
      } 
@@ -92,7 +105,7 @@
          
          <p className="text-center text-gray-500 text-sm mt-6"> 
            Already have an account?{' '} 
-           <Link href="/login" className="text-indigo-600 font-medium hover:underline"> 
+           <Link href="/login" prefetch={false} className="text-indigo-600 font-medium hover:underline"> 
              Sign in 
            </Link> 
          </p> 

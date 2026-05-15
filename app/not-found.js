@@ -31,17 +31,17 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             href="/dashboard"
-            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-500 active:scale-95"
+            prefetch={false}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-indigo-500 active:scale-95"
           >
-            <LayoutDashboard className="h-4 w-4" />
             Go to Dashboard
           </Link>
           <Link
             href="/"
-            className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-slate-50 active:scale-95"
+            prefetch={false}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-slate-50 active:scale-95"
           >
-            <Home className="h-4 w-4" />
-            Go Home
+            Back Home
           </Link>
         </div>
 
