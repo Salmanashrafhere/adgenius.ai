@@ -96,6 +96,11 @@ export default function CampaignDetailPage() {
 
   useEffect(() => {
     async function fetchCampaignData() {
+      if (!supabase) {
+        console.warn('Supabase not initialized');
+        setLoading(false);
+        return;
+      }
       try {
         const { data: campaignData, error: campaignError } = await supabase
           .from('campaigns')

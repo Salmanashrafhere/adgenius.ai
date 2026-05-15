@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { supabase } from '@/lib/supabase'
 
 function GoogleIcon({ className }) {
   return (
@@ -50,6 +51,20 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  const handleGoogleLogin = async () => {
+    if (!supabase) {
+      setErrors(prev => ({ ...prev, api: "Auth is currently unavailable." }));
+      return;
+    }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : ''
+      }
+    })
+    if (error) setErrors(prev => ({ ...prev, api: error.message }));
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const next = {
@@ -61,20 +76,30 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      if (supabase) {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        if (!response.ok) {
+          throw new Error(data.error || 'Login failed');
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
+        }
+        router.push("/dashboard");
+      } else {
+        // Demo mode - any credentials work
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify({ email, name: 'Demo User' }));
+        }
+        router.push("/dashboard");
       }
-
-      localStorage.setItem('supabase.auth.token', JSON.stringify(data.session));
-      router.push("/dashboard");
     } catch (err) {
       setErrors(prev => ({ ...prev, api: err.message }));
     } finally {
@@ -109,6 +134,7 @@ export default function LoginPage() {
 
           <button
             type="button"
+            onClick={handleGoogleLogin}
             className="mt-8 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
           >
             <GoogleIcon className="h-5 w-5 shrink-0" />

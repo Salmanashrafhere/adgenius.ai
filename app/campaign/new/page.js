@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Globe,
   Check,
@@ -130,6 +131,7 @@ const CARD_GRADIENTS = [
 ];
 
 export default function NewCampaignPage() {
+  const { session, user, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const [step, setStep] = useState(1);
 
@@ -165,6 +167,12 @@ export default function NewCampaignPage() {
   const [filter, setFilter] = useState("All");
   const [favorites, setFavorites] = useState({});
   const [selectedAds, setSelectedAds] = useState({});
+
+  if (authLoading) return null;
+
+  if (!supabase) {
+    console.log('Supabase not configured');
+  }
 
   const clearProcessingTimers = useCallback(() => {
     if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
@@ -271,6 +279,13 @@ export default function NewCampaignPage() {
     };
 
     try {
+      if (!supabase) {
+        // Fallback for demo if supabase is not initialized
+        setCampaignData(DUMMY_CAMPAIGN);
+        setStep(3);
+        setLoading(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error("You must be logged in to generate campaigns");

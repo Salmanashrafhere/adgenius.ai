@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
+import { supabase } from '@/lib/supabase'
 
 function GoogleIcon({ className }) {
   return (
@@ -74,6 +75,20 @@ export default function SignupPage() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
+  const handleGoogleSignup = async () => {
+    if (!supabase) {
+      setErrors(prev => ({ ...prev, api: "Auth is currently unavailable." }));
+      return;
+    }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : ''
+      }
+    })
+    if (error) setErrors(prev => ({ ...prev, api: error.message }));
+  }
+
   const strength = useMemo(() => passwordStrength(password), [password]);
 
   async function handleSubmit(e) {
@@ -90,33 +105,43 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name: fullName }),
-      });
+      if (supabase) {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name: fullName }),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Signup failed');
+        if (!response.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        // Automatically login after signup
+        const loginResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const loginData = await loginResponse.json();
+
+        if (!loginResponse.ok) {
+          throw new Error(loginData.error || 'Login after signup failed');
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('supabase.auth.token', JSON.stringify(loginData.session));
+        }
+        router.push("/dashboard");
+      } else {
+        // Demo mode
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify({ email, name: fullName }));
+        }
+        router.push("/dashboard");
       }
-
-      // Automatically login after signup
-      const loginResponse = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const loginData = await loginResponse.json();
-
-      if (!loginResponse.ok) {
-        throw new Error(loginData.error || 'Login after signup failed');
-      }
-
-      localStorage.setItem('supabase.auth.token', JSON.stringify(loginData.session));
-      router.push("/dashboard");
     } catch (err) {
       setErrors(prev => ({ ...prev, api: err.message }));
     } finally {
@@ -163,6 +188,7 @@ export default function SignupPage() {
 
           <button
             type="button"
+            onClick={handleGoogleSignup}
             className="mt-8 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
           >
             <GoogleIcon className="h-5 w-5 shrink-0" />

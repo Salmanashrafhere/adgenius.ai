@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   CreditCard, 
   Download, 
@@ -29,6 +30,13 @@ const plans = [
 ];
 
 export default function BillingPage() {
+  const { session, user, loading: authLoading } = useAuth();
+
+  if (authLoading) return null;
+
+  if (!supabase) {
+    console.log('Supabase not configured');
+  }
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
       <Sidebar />

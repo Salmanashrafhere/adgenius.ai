@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Megaphone,
   Image as ImageIcon,
@@ -37,6 +38,7 @@ function platformBadge(platforms) {
 }
 
 export default function DashboardPage() {
+  const { session, user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +50,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchDashboardData() {
+      if (authLoading) return;
+
+      if (!supabase) {
+        console.log('Supabase not configured');
+        setCampaigns([]);
+        setStats({
+          totalCampaigns: 0,
+          totalAds: 0,
+          creditsRemaining: 0
+        });
+        setLoading(false);
+        return;
+      }
+
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        if (!user && !session) {
           router.push('/login');
+          return;
+        }
+
+        const userId = user?.id || session?.user?.id;
+        if (!userId) {
+          setLoading(false);
           return;
         }
 
@@ -63,7 +84,7 @@ export default function DashboardPage() {
           .limit(5);
 
         if (campaignsError) {
-          console.warn('Could not fetch campaigns, using demo data');
+          console.warn('Could not fetch campaigns');
           setCampaigns([]);
         } else {
           setCampaigns(campaignsData || []);
@@ -73,10 +94,10 @@ export default function DashboardPage() {
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('credits_remaining, credits_used')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .single();
 
-        let credits = 150; // Demo fallback
+        let credits = 0;
         if (!userError && userData) {
           credits = userData.credits_remaining;
         }
@@ -84,11 +105,10 @@ export default function DashboardPage() {
         // Fetch total ads count
         let adsCount = 0;
         try {
-          // Fix: use proper join syntax for Supabase
           const { count, error: adsError } = await supabase
             .from('ad_creatives')
             .select('id, campaigns!inner(user_id)', { count: 'exact', head: true })
-            .eq('campaigns.user_id', session.user.id);
+            .eq('campaigns.user_id', userId);
           
           if (!adsError) adsCount = count || 0;
         } catch (e) {
@@ -101,27 +121,23 @@ export default function DashboardPage() {
           const { count } = await supabase
             .from('campaigns')
             .select('id', { count: 'exact', head: true })
-            .eq('user_id', session.user.id);
+            .eq('user_id', userId);
           if (count !== null) totalCampaignsCount = count;
         } catch (e) {}
         
         setStats({
-          totalCampaigns: totalCampaignsCount || 12, // Fallback to demo if 0
-          totalAds: adsCount || 48, // Fallback to demo if 0
+          totalCampaigns: totalCampaignsCount,
+          totalAds: adsCount,
           creditsRemaining: credits
         });
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Set demo data on error
-        setCampaigns([
-          { id: 'demo-1', name: 'Nike Running Shoes', platform: 'facebook', status: 'ready', created_at: new Date().toISOString(), ad_creatives: [{ count: 15 }] },
-          { id: 'demo-2', name: 'Summer Collection', platform: 'instagram', status: 'ready', created_at: new Date().toISOString(), ad_creatives: [{ count: 8 }] },
-        ]);
+        setCampaigns([]);
         setStats({
-          totalCampaigns: 12,
-          totalAds: 48,
-          creditsRemaining: 150
+          totalCampaigns: 0,
+          totalAds: 0,
+          creditsRemaining: 0
         });
       } finally {
         setLoading(false);
@@ -129,9 +145,13 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData();
-  }, [router]);
+  }, [router, authLoading, session, user]);
 
   async function removeCampaign(id) {
+    if (!supabase) {
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+      return;
+    }
     try {
       const { error } = await supabase.from('campaigns').delete().eq('id', id);
       if (error) throw error;

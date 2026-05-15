@@ -12,6 +12,13 @@ export async function POST(req) {
       )
     }
 
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Database connection not configured' },
+        { status: 500 }
+      )
+    }
+
     // 1. Create user in Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,

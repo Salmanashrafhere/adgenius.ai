@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     if (msg) return;
 
     setLoading(true);
-    window.setTimeout(() => {
+    setTimeout(() => {
       setLoading(false);
       setSent(true);
     }, 1000);

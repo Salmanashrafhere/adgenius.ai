@@ -196,6 +196,9 @@ export async function POST(request) {
 
     // Save to Supabase
     try {
+      if (!supabaseAdmin) {
+        throw new Error("Supabase Admin client not initialized");
+      }
       // 1. Save campaign
       const { data: campaign, error: campaignError } = await supabaseAdmin
         .from('campaigns')

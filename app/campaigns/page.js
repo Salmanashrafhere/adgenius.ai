@@ -5,6 +5,7 @@ import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Search, 
   Plus, 
@@ -48,19 +49,30 @@ const colors = [
 ];
 
 export default function CampaignsPage() {
+  const { session, user, loading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("All Status");
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCampaigns();
-  }, []);
+    if (!authLoading) {
+      fetchCampaigns();
+    }
+  }, [authLoading]);
 
   async function fetchCampaigns() {
+    if (!supabase) {
+      console.log('Supabase not configured');
+      setCampaigns([]);
+      setLoading(false);
+      return;
+    }
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session && !user) return;
+
+      const userId = user?.id || session?.user?.id;
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from('campaigns')
@@ -78,6 +90,10 @@ export default function CampaignsPage() {
 
   async function deleteCampaign(id) {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
+    if (!supabase) {
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+      return;
+    }
     try {
       const { error } = await supabase.from('campaigns').delete().eq('id', id);
       if (error) throw error;

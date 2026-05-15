@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sparkles,
   LayoutDashboard,
@@ -26,6 +28,19 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, session } = useAuth(false);
+
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user');
+      localStorage.removeItem('supabase.auth.token');
+    }
+    router.push("/login");
+  };
 
   const NavLink = ({ item }) => {
     const Icon = item.icon;
@@ -67,15 +82,16 @@ export default function Sidebar() {
         <div className="border-t border-slate-100 p-4">
           <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white">
-              JD
+              {(user?.user_metadata?.name || user?.name || "User").split(' ').map(n => n[0]).join('').toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-900">John Doe</p>
-              <p className="truncate text-xs text-slate-500">john@adgenius.ai</p>
+              <p className="truncate text-sm font-semibold text-slate-900">{user?.user_metadata?.name || user?.name || "Demo User"}</p>
+              <p className="truncate text-xs text-slate-500">{user?.email || "demo@adgenius.ai"}</p>
             </div>
           </div>
           <button
             type="button"
+            onClick={handleLogout}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white py-2 text-sm font-medium text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 active:scale-[0.99]"
           >
             <LogOut className="h-4 w-4" />

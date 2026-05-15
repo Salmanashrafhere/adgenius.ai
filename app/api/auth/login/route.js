@@ -12,6 +12,13 @@ export async function POST(req) {
       )
     }
 
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Database connection not configured' },
+        { status: 500 }
+      )
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
