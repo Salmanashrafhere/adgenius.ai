@@ -17,8 +17,12 @@ export async function GET(req) {
     const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
-        *,
-        ad_creatives(*)
+        id,
+        name,
+        platform,
+        status,
+        created_at,
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
