@@ -17,8 +17,12 @@ export async function GET(req) {
     const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
-        *,
-        ad_creatives(*)
+        id,
+        name,
+        platform,
+        status,
+        created_at,
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -27,9 +31,20 @@ export async function GET(req) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    // Map to include adsCount while keeping ad_creatives for backward compatibility
+    // but with minimized data (just IDs).
+    // Bolt: Reducing payload size improves TBT and LCP for the campaign list view.
+    // We keep ad_creatives to avoid breaking changes, but only with IDs.
+    const optimizedCampaigns = campaigns.map(c => {
+      return {
+        ...c,
+        adsCount: c.ad_creatives?.length || 0
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      campaigns
+      campaigns: optimizedCampaigns
     })
   } catch (error) {
     console.error('Fetch campaigns error:', error)
