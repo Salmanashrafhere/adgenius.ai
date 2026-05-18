@@ -1,13 +1,36 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req) {
   try {
-    const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // This can be ignored if you have middleware refreshing user sessions.
+            }
+          },
+        },
+      }
+    )
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     if (!supabaseAdmin) {
@@ -20,7 +43,7 @@ export async function GET(req) {
         *,
         ad_creatives(*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
