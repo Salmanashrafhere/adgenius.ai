@@ -1,0 +1,3 @@
+## 2026-05-19 - [API Payload Optimization for Campaigns]
+**Learning:** Fetching full relational data (e.g., `ad_creatives(*)`) for list views (like the dashboard) creates a massive payload bottleneck as the database grows. However, when optimizing, one must preserve the existing data structure to avoid breaking changes. Returning a minimized array (e.g., `ad_creatives(id)`) instead of removing it entirely ensures compatibility with frontend components relying on the array length.
+**Action:** Always select only required columns for list views. Use minimized joins and transform data on the server to provide summary fields while maintaining backward compatibility with the existing API contract.
