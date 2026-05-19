@@ -1,0 +1,4 @@
+## 2025-05-19 - IDOR Vulnerabilities in API Routes
+**Vulnerability:** Several API routes (`/api/generate` and `/api/campaigns`) were accepting `userId` directly from the request body or query parameters without verifying the user's session. This allowed any user to potentially generate content for or view campaigns of other users by providing a different `userId`.
+**Learning:** Relying on client-provided identifiers for sensitive operations without server-side session verification is a classic Insecure Direct Object Reference (IDOR) vulnerability.
+**Prevention:** Always verify the user's identity on the server using session tokens or cookies before performing actions or retrieving data that should be restricted to the authenticated user. In Next.js with Supabase, this can be achieved using `@supabase/ssr` to retrieve the authenticated user from the session in API routes.
