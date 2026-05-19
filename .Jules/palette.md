@@ -1,0 +1,3 @@
+## 2025-05-15 - [Header Accessibility & Discoverability]
+**Learning:** Toggled UI elements (menus, popovers) require explicit ARIA state (`aria-expanded`, `aria-haspopup`) and an `Escape` key listener to meet accessibility standards and user expectations for keyboard navigation. Global search discoverability is significantly improved by adding a standard keyboard shortcut (`/`) paired with a visible `<kbd>` hint.
+**Action:** Always include ARIA attributes on interactive menu triggers and implement a global `keydown` listener for `Escape`. For search inputs, default to adding a `/` shortcut and visual hint.
