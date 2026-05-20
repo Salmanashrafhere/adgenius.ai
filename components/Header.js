@@ -46,8 +46,20 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -81,6 +93,8 @@ export default function Header({ title = "Dashboard", children }) {
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               aria-label="Notifications"
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -138,6 +152,7 @@ export default function Header({ title = "Dashboard", children }) {
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+              aria-label="User menu"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
