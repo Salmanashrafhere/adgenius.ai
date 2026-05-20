@@ -1,0 +1,3 @@
+## 2026-05-20 - [Payload Reduction in Campaign List]
+**Learning:** Selecting only essential columns (`id`, `name`, `platform`, `status`, `created_at`) and minimizing relational joins (`ad_creatives(id)`) significantly reduces API response size without breaking the frontend list views. Deriving `adsCount` on the server prevents the client from having to process large arrays of text-heavy objects just to show a count.
+**Action:** Always prefer specific column selection over `select(*)` for list views. Use minimized relational data for counts or presence checks to maintain backward compatibility while optimizing egress.
