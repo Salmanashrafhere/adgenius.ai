@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabaseServer'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req) {
   try {
-    const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
+    const supabase = await createClient()
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     if (!supabaseAdmin) {
@@ -20,7 +23,7 @@ export async function GET(req) {
         *,
         ad_creatives(*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {
