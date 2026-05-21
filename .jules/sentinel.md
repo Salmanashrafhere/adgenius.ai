@@ -1,0 +1,4 @@
+## 2025-05-14 - [IDOR in Campaign Management and Generation Routes]
+**Vulnerability:** IDOR (Insecure Direct Object Reference) in `/api/campaigns` and `/api/generate` routes. These routes accepted a `userId` from request parameters (query or body) and used it to fetch or save data without verifying that the `userId` matched the authenticated user session.
+**Learning:** Pure client-side `localStorage` authentication patterns often lead to API designs that trust user-provided identifiers, creating IDOR risks. Next.js App Router applications should use server-side session verification via cookies to securely identify users.
+**Prevention:** Always retrieve the `userId` from a verified server-side session (e.g., using `supabase.auth.getUser()` with a cookie-aware client) instead of trusting identifiers provided in the request payload.
