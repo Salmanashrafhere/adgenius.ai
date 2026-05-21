@@ -1,0 +1,23 @@
+
+> adgenius-saas@0.1.0 dev /app
+> next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.0.2:3001
+   - Experiments (use with caution):
+     · serverActions
+
+ ✓ Starting...
+ ✓ Ready in 1684ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 2.1s (618 modules)
+ GET /login 200 in 3578ms
+ ✓ Compiled /middleware in 365ms (115 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 741ms (685 modules)
+ GET /dashboard 200 in 1225ms
+ ○ Compiling /api/campaigns ...
+ ✓ Compiled /api/campaigns in 561ms (752 modules)
+ GET /api/campaigns?userId=test-user-id 500 in 916ms
