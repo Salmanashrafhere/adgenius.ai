@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -52,10 +52,10 @@ export default function DashboardPage() {
   const [toasts, setToasts] = useState([]);
   const notifRef = useRef(null);
 
-  const showToast = (message, type = "success") => {
+  const showToast = useCallback((message, type = "success") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -117,41 +117,48 @@ export default function DashboardPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('adgenius_user');
     router.push('/login');
-  };
+  }, [router]);
 
-  const markAllAsRead = () => {
+  const markAllAsRead = useCallback(() => {
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
     localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
-  };
+  }, [notifications]);
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = useCallback(() => {
     setNotifications([]);
     localStorage.setItem('adgenius_notifications', JSON.stringify([]));
-  };
+  }, []);
 
-  const markAsRead = (id) => {
+  const markAsRead = useCallback((id) => {
     const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
     setNotifications(updated);
     localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
-  };
+  }, [notifications]);
 
-  const removeCampaign = (id) => {
+  const removeCampaign = useCallback((id) => {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
     localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
     showToast("Campaign deleted successfully", "success");
-  };
+  }, [campaigns, showToast]);
 
-  const downloadCampaign = (name) => {
+  const downloadCampaign = useCallback((name) => {
     showToast(`Preparing download for ${name}...`, "info");
-  };
+  }, [showToast]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+  const stats = useMemo(() => [
+    { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+  ], [campaigns, user?.credits]);
 
   if (loading) {
     return (
@@ -229,12 +236,7 @@ export default function DashboardPage() {
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            ].map((s) => (
+            {stats.map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <div>
