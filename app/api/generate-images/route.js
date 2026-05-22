@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabaseServer";
 
 export const maxDuration = 120; // 2 minute timeout
 export const runtime = "nodejs";
@@ -101,6 +102,20 @@ async function queryHuggingFace(imagePrompt, apiKey) {
 }
 
 export async function POST(request) {
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (e) {
+    console.error('Supabase client error:', e)
+    return NextResponse.json({ success: false, message: 'Database connection not configured' }, { status: 500 })
+  }
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY;
   const hfKey = process.env.HUGGINGFACE_API_KEY;
 

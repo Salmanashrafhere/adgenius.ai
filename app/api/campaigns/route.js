@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabaseServer'
 
-export async function GET(req) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
-
-    if (!supabaseAdmin) {
+    let supabase;
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('Supabase client error:', e)
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
-    const { data: campaigns, error } = await supabaseAdmin
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: campaigns, error } = await supabase
       .from('campaigns')
       .select(`
         *,
         ad_creatives(*)
       `)
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
     if (error) {

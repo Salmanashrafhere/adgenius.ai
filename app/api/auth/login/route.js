@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabaseServer'
 
 export async function POST(req) {
   try {
@@ -12,11 +12,12 @@ export async function POST(req) {
       )
     }
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database connection not configured' },
-        { status: 500 }
-      )
+    let supabase;
+    try {
+      supabase = await createClient()
+    } catch (e) {
+      console.error('Supabase client error:', e)
+      return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
