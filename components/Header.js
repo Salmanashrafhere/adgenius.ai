@@ -34,10 +34,21 @@ export default function Header({ title = "Dashboard", children }) {
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+      if (e.key === "/" && document.activeElement !== searchInputRef.current && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
@@ -46,8 +57,12 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +83,15 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 sm:block">
+              /
+            </kbd>
           </div>
 
           {/* Notifications */}
@@ -81,6 +101,8 @@ export default function Header({ title = "Dashboard", children }) {
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               aria-label="Notifications"
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
