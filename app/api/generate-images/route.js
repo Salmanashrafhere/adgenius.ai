@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabaseServer";
 
 export const maxDuration = 120; // 2 minute timeout
 export const runtime = "nodejs";
@@ -112,6 +113,13 @@ export async function POST(request) {
   }
 
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const { productTitle, headlines, tone, platform } = await request.json();
 
     if (!productTitle) {
