@@ -14,11 +14,11 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
-    const { data: campaigns, error } = await supabaseAdmin
+    const { data: campaignsData, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
         *,
-        ad_creatives(*)
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -26,6 +26,13 @@ export async function GET(req) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // Optimization: Add adsCount server-side and keep ad_creatives minimized
+    // to reduce payload size while maintaining backward compatibility.
+    const campaigns = campaignsData.map(campaign => ({
+      ...campaign,
+      adsCount: campaign.ad_creatives?.length || 0
+    }));
 
     return NextResponse.json({
       success: true,
