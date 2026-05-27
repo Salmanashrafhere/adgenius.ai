@@ -10,12 +10,16 @@ import {
   User, 
   CreditCard, 
   Settings, 
-  LogOut 
+  LogOut,
+  CheckCircle2,
+  Info,
+  AlertCircle
 } from "lucide-react";
 
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const searchInputRef = useRef(null);
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -26,11 +30,23 @@ export default function Header({ title = "Dashboard", children }) {
     }
   }, []);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adgenius_notifications');
+      if (saved) {
+        setNotifications(JSON.parse(saved));
+      } else {
+        const defaults = [
+          { id: 1, title: "Welcome to AdGenius AI", message: "Start creating your first campaign", read: false, time: "2m ago", type: 'info' },
+          { id: 2, title: "Free Trial Active", message: "You have 10 credits remaining", read: false, time: "1h ago", type: 'success' },
+        ];
+        setNotifications(defaults);
+        localStorage.setItem('adgenius_notifications', JSON.stringify(defaults));
+      }
+    }
+  }, []);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
@@ -46,16 +62,36 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    function handleKeyDown(e) {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   return (
@@ -68,10 +104,15 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:block">
+              <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 shadow-sm">/</kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -109,15 +150,24 @@ export default function Header({ title = "Dashboard", children }) {
                       <div 
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex items-start gap-3 border-b border-slate-50 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-                            {n.text}
-                          </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        <div className="mt-1 shrink-0">
+                          {n.type === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                          {n.type === 'info' && <Info className="h-4 w-4 text-blue-500" />}
+                          {n.type === 'warning' && <AlertCircle className="h-4 w-4 text-amber-500" />}
+                          {n.type === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
                         </div>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                              {n.title}
+                            </p>
+                            {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />}
+                          </div>
+                          <p className="text-xs text-slate-500 line-clamp-2">{n.message}</p>
+                          <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
+                        </div>
                       </div>
                     ))
                   )}
@@ -140,6 +190,7 @@ export default function Header({ title = "Dashboard", children }) {
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
+              aria-label="User menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
                 {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
