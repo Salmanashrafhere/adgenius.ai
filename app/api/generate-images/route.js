@@ -100,7 +100,17 @@ async function queryHuggingFace(imagePrompt, apiKey) {
   throw new Error("Hugging Face failed after maximum retries");
 }
 
+import { createClient } from "@/lib/supabaseServer";
+
 export async function POST(request) {
+  // Authentication check
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY;
   const hfKey = process.env.HUGGINGFACE_API_KEY;
 
