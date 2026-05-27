@@ -1,0 +1,3 @@
+## 2025-05-15 - [Optimization Pattern: Avoiding Breaking Changes in Shared Schemas]
+**Learning:** Optimizing API payloads by pruning fields can be dangerous if the frontend relies on those same fields for persistent synchronization (e.g., updating a local storage cache from the API state). A "minimized" response structure that breaks the expected data contract will cause regressions in other parts of the system, like campaign deletion or detail views.
+**Action:** Always verify that API optimizations maintain structural backward compatibility. If payload size is a concern, add new summary fields (like `adsCount`) rather than removing existing ones that might be required for synchronization or downstream features.

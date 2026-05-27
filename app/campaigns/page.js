@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -107,9 +107,14 @@ export default function CampaignsPage() {
     showToast("Campaign deleted", "success");
   };
 
-  const filteredCampaigns = campaigns.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Performance: Memoize filtered results and normalize query once outside the loop
+  const filteredCampaigns = useMemo(() => {
+    if (!searchQuery) return campaigns;
+    const normalizedQuery = searchQuery.toLowerCase();
+    return campaigns.filter(c =>
+      c.name.toLowerCase().includes(normalizedQuery)
+    );
+  }, [campaigns, searchQuery]);
 
   if (loading) return null;
 
