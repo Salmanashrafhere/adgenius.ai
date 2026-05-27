@@ -97,15 +97,22 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
     }
 
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
+    // Verify session and get userId from auth
+    const { createClient } = await import('@/lib/supabaseServer');
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+
+    const userId = user.id;
 
     const platforms = normalizePlatforms(platform);
     if (platforms.length === 0) {
