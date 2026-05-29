@@ -10,30 +10,43 @@ import {
   User, 
   CreditCard, 
   Settings, 
-  LogOut 
+  LogOut,
+  CheckCircle2,
+  Info,
+  AlertCircle
 } from "lucide-react";
 
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   
+  const menuRef = useRef(null);
+  const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
+
+      const savedNotifications = localStorage.getItem('adgenius_notifications');
+      if (savedNotifications) {
+        setNotifications(JSON.parse(savedNotifications));
+      } else {
+        const defaultNotifs = [
+          { id: 1, title: "Campaign Ready: Nike Shoes", message: "Your campaign is ready to download.", type: "success", read: false, time: "2m ago" },
+          { id: 2, title: "3 new ads generated", message: "Check out the new variations.", type: "info", read: false, time: "1h ago" },
+          { id: 3, title: "Welcome to AdGenius AI", message: "Glad to have you here!", type: "info", read: false, time: "1d ago" },
+        ];
+        setNotifications(defaultNotifs);
+        localStorage.setItem('adgenius_notifications', JSON.stringify(defaultNotifs));
+      }
     }
   }, []);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
-  
-  const menuRef = useRef(null);
-  const notifRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -46,16 +59,41 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+      if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    localStorage.setItem('adgenius_notifications', JSON.stringify([]));
   };
 
   return (
@@ -66,12 +104,19 @@ export default function Header({ title = "Dashboard", children }) {
         <div className="flex flex-1 flex-wrap items-center justify-end gap-3 sm:flex-nowrap">
           {/* Search bar */}
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:block">
+              <kbd className="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400 shadow-sm">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -81,43 +126,64 @@ export default function Header({ title = "Dashboard", children }) {
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               aria-label="Notifications"
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5" aria-hidden="true" />
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
                   {unreadCount}
                 </span>
               )}
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5">
+              <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5 z-50">
                 <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
                   <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                  <button 
-                    onClick={markAllAsRead}
-                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Mark all read
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-[10px] font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      Mark all read
+                    </button>
+                    <button
+                      onClick={clearAllNotifications}
+                      className="text-[10px] font-medium text-red-600 hover:text-red-700"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
+                    <div className="p-8 text-center">
+                      <p className="text-xs text-slate-500">No notifications</p>
+                    </div>
                   ) : (
                     notifications.map((n) => (
                       <div 
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''} border-b border-slate-50 last:border-0`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-                            {n.text}
-                          </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        <div className="mt-1 shrink-0">
+                          {n.type === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-500" aria-hidden="true" />}
+                          {n.type === 'info' && <Info className="h-4 w-4 text-blue-500" aria-hidden="true" />}
+                          {n.type === 'warning' && <AlertCircle className="h-4 w-4 text-amber-500" aria-hidden="true" />}
+                          {n.type === 'error' && <AlertCircle className="h-4 w-4 text-red-500" aria-hidden="true" />}
                         </div>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-xs ${!n.read ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
+                              {n.title || n.text}
+                            </p>
+                            {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />}
+                          </div>
+                          <p className="mt-0.5 truncate text-[10px] text-slate-500">{n.message}</p>
+                          <span className="mt-1 block text-[9px] text-slate-400">{n.time}</span>
+                        </div>
                       </div>
                     ))
                   )}
@@ -128,7 +194,7 @@ export default function Header({ title = "Dashboard", children }) {
 
           {/* Credits - Desktop */}
           <span className="hidden items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm sm:inline-flex">
-            <Zap className="h-4 w-4" />
+            <Zap className="h-4 w-4" aria-hidden="true" />
             {user?.credits || 0} Credits
           </span>
 
@@ -144,7 +210,7 @@ export default function Header({ title = "Dashboard", children }) {
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
                 {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
               </span>
-              <ChevronDown className={`h-4 w-4 text-slate-500 transition ${menuOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-4 w-4 text-slate-500 transition ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true" />
             </button>
 
             {menuOpen && (
@@ -158,7 +224,7 @@ export default function Header({ title = "Dashboard", children }) {
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <User className="h-4 w-4 text-slate-400" />
+                  <User className="h-4 w-4 text-slate-400" aria-hidden="true" />
                   Profile
                 </Link>
                 <Link
@@ -167,7 +233,7 @@ export default function Header({ title = "Dashboard", children }) {
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <CreditCard className="h-4 w-4 text-slate-400" />
+                  <CreditCard className="h-4 w-4 text-slate-400" aria-hidden="true" />
                   Billing
                 </Link>
                 <Link
@@ -176,7 +242,7 @@ export default function Header({ title = "Dashboard", children }) {
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <Settings className="h-4 w-4 text-slate-400" />
+                  <Settings className="h-4 w-4 text-slate-400" aria-hidden="true" />
                   Settings
                 </Link>
                 <div className="my-1 border-t border-slate-100" />
@@ -186,7 +252,7 @@ export default function Header({ title = "Dashboard", children }) {
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50"
                   onClick={() => setMenuOpen(false)}
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
                   Sign out
                 </Link>
               </div>
@@ -200,7 +266,7 @@ export default function Header({ title = "Dashboard", children }) {
       {/* Credits - Mobile (only visible on small screens) */}
       <div className="border-t border-slate-100 px-4 py-2 sm:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700">
-          <Zap className="h-3.5 w-3.5" />
+          <Zap className="h-3.5 w-3.5" aria-hidden="true" />
           {user?.credits || 0} Credits
         </span>
       </div>
