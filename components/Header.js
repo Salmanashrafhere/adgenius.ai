@@ -34,20 +34,35 @@ export default function Header({ title = "Dashboard", children }) {
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setNotifOpen(false);
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    }
+
+    function handleKeyDown(e) {
+      // Search shortcut (/)
+      if (
+        e.key === "/" &&
+        !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        searchRef.current?.focus();
       }
     }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +83,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:block">
+              <kbd className="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}

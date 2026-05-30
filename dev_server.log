@@ -1,0 +1,14 @@
+
+> adgenius-saas@0.1.0 dev /app
+> next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3002 instead.
+   ▲ Next.js 15.5.18
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.0.2:3002
+   - Experiments (use with caution):
+     · serverActions
+
+ ✓ Starting...
+ ✓ Ready in 2.8s
+\xe2\x80 ELIFECYCLE  Command failed[[?25h
