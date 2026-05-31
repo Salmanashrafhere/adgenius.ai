@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -107,9 +107,16 @@ export default function CampaignsPage() {
     showToast("Campaign deleted", "success");
   };
 
-  const filteredCampaigns = campaigns.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // BOLT OPTIMIZATION: Memoize filtered campaigns and normalize search query once.
+  // This avoids redundant .toLowerCase() calls on the query string for every item
+  // in the filter loop, reducing complexity from O(N*M) to O(N) string operations
+  // per render where N is the number of campaigns.
+  const filteredCampaigns = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return campaigns.filter(c =>
+      c.name.toLowerCase().includes(query)
+    );
+  }, [campaigns, searchQuery]);
 
   if (loading) return null;
 
