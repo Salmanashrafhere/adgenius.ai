@@ -1,0 +1,4 @@
+## 2026-05-31 - [IDOR in API Routes]
+**Vulnerability:** API routes were relying on `userId` passed as a query parameter or in the request body to filter sensitive data (e.g., campaigns), allowing any authenticated (or even unauthenticated) user to access data of any other user by simply providing their ID.
+**Learning:** Next.js API routes using `supabaseAdmin` must always verify the user's identity server-side using `supabase.auth.getUser()` from a client that has access to cookies via `@supabase/ssr`. Relying on client-provided IDs is a classic Insecure Direct Object Reference (IDOR) pattern.
+**Prevention:** Implement a centralized server-side client utility (`lib/supabaseServer.js`) and enforce its use in all API routes that handle user-specific data to retrieve the `userId` from the verified session.
