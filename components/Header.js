@@ -16,7 +16,8 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
+  const searchInputRef = useRef(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
@@ -38,16 +39,36 @@ export default function Header({ title = "Dashboard", children }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
+    function handleEvents(e) {
+      // Handle click outside
+      if (e.type === "mousedown") {
+        if (menuRef.current && !menuRef.current.contains(e.target)) {
+          setMenuOpen(false);
+        }
+        if (notifRef.current && !notifRef.current.contains(e.target)) {
+          setNotifOpen(false);
+        }
       }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setNotifOpen(false);
+
+      // Handle keyboard shortcuts
+      if (e.type === "keydown") {
+        if (e.key === "Escape") {
+          setMenuOpen(false);
+          setNotifOpen(false);
+        }
+
+        if (e.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+        }
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleEvents);
+    document.addEventListener("keydown", handleEvents);
+    return () => {
+      document.removeEventListener("mousedown", handleEvents);
+      document.removeEventListener("keydown", handleEvents);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +89,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:block">
+              <kbd className="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -81,6 +109,8 @@ export default function Header({ title = "Dashboard", children }) {
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               aria-label="Notifications"
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -106,19 +136,19 @@ export default function Header({ title = "Dashboard", children }) {
                     <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
                   ) : (
                     notifications.map((n) => (
-                      <div 
+                      <button
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                             {n.text}
                           </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" aria-hidden="true" />}
                         </div>
                         <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
