@@ -1,0 +1,26 @@
+
+> adgenius-saas@0.1.0 dev /app
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+   - Experiments (use with caution):
+     · serverActions
+
+ ✓ Starting...
+ ✓ Ready in 1835ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3s (676 modules)
+ GET / 200 in 3902ms
+ ✓ Compiled /middleware in 365ms (115 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1001ms (727 modules)
+ GET /dashboard 200 in 1477ms
+ ○ Compiling /api/campaigns ...
+ ✓ Compiled /api/campaigns in 790ms (780 modules)
+ GET /api/campaigns?userId=123 200 in 1259ms
+ GET /dashboard 200 in 1478ms
+ GET /api/campaigns?userId=123 500 in 20ms
+ ELIFECYCLE  Command failed.
+[?25h
