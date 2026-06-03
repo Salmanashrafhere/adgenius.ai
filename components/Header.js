@@ -16,15 +16,6 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('adgenius_user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    }
-  }, []);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
@@ -34,20 +25,50 @@ export default function Header({ title = "Dashboard", children }) {
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setNotifOpen(false);
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleEvents(e) {
+      // Click outside
+      if (e.type === "mousedown") {
+        if (menuRef.current && !menuRef.current.contains(e.target)) {
+          setMenuOpen(false);
+        }
+        if (notifRef.current && !notifRef.current.contains(e.target)) {
+          setNotifOpen(false);
+        }
+      }
+
+      // Keyboard shortcuts
+      if (e.type === "keydown") {
+        if (e.key === "Escape") {
+          setMenuOpen(false);
+          setNotifOpen(false);
+        }
+        if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          searchRef.current?.focus();
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", handleEvents);
+    document.addEventListener("keydown", handleEvents);
+    return () => {
+      document.removeEventListener("mousedown", handleEvents);
+      document.removeEventListener("keydown", handleEvents);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +89,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 sm:block">
+              <kbd className="flex h-5 w-5 items-center justify-center rounded border border-slate-200 bg-slate-50 text-[10px] font-medium text-slate-400">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -106,19 +134,19 @@ export default function Header({ title = "Dashboard", children }) {
                     <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
                   ) : (
                     notifications.map((n) => (
-                      <div 
+                      <button
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                        <span className="flex items-start justify-between gap-2">
+                          <span className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                             {n.text}
-                          </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
-                        </div>
+                          </span>
+                          {!n.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        </span>
                         <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -140,6 +168,7 @@ export default function Header({ title = "Dashboard", children }) {
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
+              aria-label="User menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
                 {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
