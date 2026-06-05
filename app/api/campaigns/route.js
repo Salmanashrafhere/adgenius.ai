@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabaseServer'
 
-export async function GET(req) {
+export async function GET() {
+  const sb = await createClient()
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const userId = user.id
   try {
-    const { searchParams } = new URL(req.url)
-    const userId = searchParams.get('userId')
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
-    }
 
     if (!supabaseAdmin) {
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
