@@ -25,7 +25,7 @@ export default function NotFound() {
 
         <h1 className="text-3xl font-bold text-slate-900 mb-3">404 - Page Not Found</h1>
         <p className="text-slate-600 mb-10 text-lg">
-          Oops! The page you're looking for has vanished into thin air. Let's get you back on track.
+          Oops! The page you&apos;re looking for has vanished into thin air. Let&apos;s get you back on track.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
