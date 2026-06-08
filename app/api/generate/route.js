@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
 import { supabaseAdmin } from "@/lib/supabase";
+import { createClient } from "@/lib/supabaseServer";
 
 export const maxDuration = 60 // Vercel timeout fix 
 export const runtime = "nodejs";
@@ -105,6 +106,19 @@ export async function POST(request) {
 
     if (!userId) {
       return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
+    }
+
+    // Secure the endpoint by verifying the authenticated user session
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify that the requested userId matches the authenticated user's ID to prevent IDOR
+    if (user.id !== userId) {
+      return NextResponse.json({ success: false, message: "Forbidden: Access denied" }, { status: 403 });
     }
 
     const platforms = normalizePlatforms(platform);
