@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { createClient } from '@/lib/supabaseServer'
 
 export async function GET(req) {
   try {
@@ -8,6 +9,19 @@ export async function GET(req) {
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    }
+
+    // Secure the endpoint by verifying the authenticated user session
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Verify that the requested userId matches the authenticated user's ID to prevent IDOR
+    if (user.id !== userId) {
+      return NextResponse.json({ error: 'Forbidden: Access denied' }, { status: 403 })
     }
 
     if (!supabaseAdmin) {

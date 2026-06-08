@@ -1,0 +1,4 @@
+## 2025-05-14 - IDOR Vulnerabilities in API Routes
+**Vulnerability:** API routes (`/api/campaigns` and `/api/generate`) were accepting a `userId` parameter and performing operations (reading/writing) without verifying that the `userId` matched the currently authenticated session user. This allowed any logged-in user to access or generate data for any other user's ID.
+**Learning:** Reliance on client-provided IDs in server-side logic without session verification is a common source of Insecure Direct Object Reference (IDOR) vulnerabilities. Even if using a "secure" admin client on the backend to bypass RLS, explicit authorization checks must be implemented.
+**Prevention:** Always verify the authenticated user session on the server using `supabase.auth.getUser()` and compare the session's `user.id` with any requested target `userId` before proceeding with the operation. Centralize server-side Supabase client creation to ensure consistent session handling.
