@@ -23,14 +23,22 @@ export default function Header({ title = "Dashboard", children }) {
       if (userData) {
         setUser(JSON.parse(userData));
       }
+
+      const savedNotifications = localStorage.getItem('adgenius_notifications');
+      if (savedNotifications) {
+        setNotifications(JSON.parse(savedNotifications));
+      } else {
+        const defaultNotifications = [
+          { id: 1, title: 'Welcome to AdGenius AI!', message: 'Start creating your first campaign', time: 'Just now', read: false, type: 'info' },
+          { id: 2, title: 'Free Trial Active', message: 'You have 10 credits remaining', time: '1 hour ago', read: false, type: 'success' }
+        ];
+        setNotifications(defaultNotifications);
+        localStorage.setItem('adgenius_notifications', JSON.stringify(defaultNotifications));
+      }
     }
   }, []);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
+  const [notifications, setNotifications] = useState([]);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
@@ -51,11 +59,19 @@ export default function Header({ title = "Dashboard", children }) {
   }, []);
 
   const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
+      localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   return (
@@ -80,7 +96,9 @@ export default function Header({ title = "Dashboard", children }) {
               type="button"
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
-              aria-label="Notifications"
+              aria-label={`${unreadCount} unread notifications`}
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
@@ -91,7 +109,7 @@ export default function Header({ title = "Dashboard", children }) {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5">
+              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5 z-50">
                 <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
                   <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
                   <button 
@@ -106,19 +124,34 @@ export default function Header({ title = "Dashboard", children }) {
                     <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
                   ) : (
                     notifications.map((n) => (
-                      <div 
+                      <button
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        aria-label={`${n.title} - ${n.time}${!n.read ? ' (Unread)' : ''}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-                            {n.text}
-                          </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                        <div className="mt-1 shrink-0">
+                          {n.type === 'success' && <div className="h-2 w-2 rounded-full bg-emerald-500" />}
+                          {n.type === 'info' && <div className="h-2 w-2 rounded-full bg-blue-500" />}
+                          {n.type === 'warning' && <div className="h-2 w-2 rounded-full bg-amber-500" />}
+                          {n.type === 'error' && <div className="h-2 w-2 rounded-full bg-red-500" />}
                         </div>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
+                        <div className="flex flex-1 flex-col gap-0.5">
+                          <div className="flex w-full items-start justify-between gap-2">
+                            <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                              {n.title}
+                            </p>
+                            {!n.read && (
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <span className="sr-only">Unread</span>
+                                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-600" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="line-clamp-2 text-[11px] text-slate-500">{n.message}</p>
+                          <span className="text-[10px] text-slate-400">{n.time}</span>
+                        </div>
+                      </button>
                     ))
                   )}
                 </div>
