@@ -70,6 +70,7 @@ export default function NewCampaignPage() {
   /* Step 1 */
   const [productUrl, setProductUrl] = useState("");
   const [urlError, setUrlError] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   /* Step 2 */
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
@@ -207,6 +208,17 @@ export default function NewCampaignPage() {
     setStep(5);
   };
 
+  const handleAnalyze = async (e) => {
+    e.preventDefault();
+    if (!productUrl) return showToast("Please enter a URL", "error");
+
+    setIsAnalyzing(true);
+    // Simulate initial AI analysis
+    await new Promise(r => setTimeout(r, 800));
+    setIsAnalyzing(false);
+    setStep(2);
+  };
+
   const copyAdText = (ad) => {
     const text = `Headline: ${ad.headline}\nBody: ${ad.body}\nCTA: ${ad.cta}`;
     navigator.clipboard.writeText(text);
@@ -255,24 +267,32 @@ export default function NewCampaignPage() {
                   <h2 className="text-3xl font-bold tracking-tight">What are we promoting?</h2>
                   <p className="mt-3 text-lg text-slate-600">Paste your product URL to get started.</p>
                 </div>
-                <div className="mt-10">
+                <form onSubmit={handleAnalyze} className="mt-10">
+                  <label htmlFor="product-url" className="sr-only">Product URL</label>
                   <input
+                    id="product-url"
                     type="url"
                     value={productUrl}
                     onChange={(e) => setProductUrl(e.target.value)}
                     placeholder="https://yourstore.com/product"
+                    required
                     className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 py-4 px-6 text-lg focus:border-indigo-600 focus:bg-white focus:outline-none transition-all"
                   />
                   <button
-                    onClick={() => {
-                      if (productUrl) setStep(2);
-                      else showToast("Please enter a URL", "error");
-                    }}
-                    className="mt-6 w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl hover:bg-indigo-500 transition-all active:scale-95"
+                    type="submit"
+                    disabled={isAnalyzing}
+                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl hover:bg-indigo-500 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    Analyze Product
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      "Analyze Product"
+                    )}
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
