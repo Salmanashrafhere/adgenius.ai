@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
 import { supabaseAdmin } from "@/lib/supabase";
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export const maxDuration = 60 // Vercel timeout fix 
 export const runtime = "nodejs";
@@ -82,6 +84,35 @@ export async function POST(request) {
   const kill = setTimeout(() => controller.abort(), ROUTE_TIMEOUT_MS);
 
   try {
+    const cookieStore = await cookies()
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // The `setAll` method was called from a Server Component.
+            }
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ 
@@ -97,14 +128,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
-    }
-
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
     }
 
     const platforms = normalizePlatforms(platform);
@@ -186,7 +213,7 @@ export async function POST(request) {
         return NextResponse.json({ success: false, message: "Request timed out after 30 seconds" }, { status: 504 });
       }
       
-      // Return default data if parsing fails or Gemini fails as requested in FIX 1
+      // Return default data if parsing fails or Gemini fails
       console.log("[Generate API] Returning fallback campaign data due to error");
       return NextResponse.json({ 
         success: true, 
@@ -203,7 +230,7 @@ export async function POST(request) {
       const { data: campaign, error: campaignError } = await supabaseAdmin
         .from('campaigns')
         .insert({
-          user_id: userId,
+          user_id: user.id,
           name: scraped.title,
           product_url: normalizedUrl,
           product_title: scraped.title,

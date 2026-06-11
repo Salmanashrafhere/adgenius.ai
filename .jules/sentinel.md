@@ -1,0 +1,4 @@
+## 2025-05-15 - IDOR in Campaign API Routes
+**Vulnerability:** API routes (`/api/campaigns` and `/api/generate`) accepted a `userId` parameter directly from the request (query params or body) and used it to fetch or save data without verifying it against the authenticated session. This allowed any user to access or modify data belonging to any other user.
+**Learning:** The application was using a `supabaseAdmin` client to bypass Row Level Security (RLS) but failed to implement manual authorization checks in the application logic. Bypassing RLS requires strict manual verification of user identity.
+**Prevention:** Always derive the `userId` from the authenticated session (e.g., via `supabase.auth.getUser()`) on the server side. Never trust a `userId` provided in the request body or query parameters for operations involving sensitive data or data ownership.
