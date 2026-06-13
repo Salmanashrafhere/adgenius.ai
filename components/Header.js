@@ -26,18 +26,52 @@ export default function Header({ title = "Dashboard", children }) {
     }
   }, []);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adgenius_notifications');
+      if (saved) {
+        setNotifications(JSON.parse(saved));
+      } else {
+        const defaults = [
+          { id: 1, text: "Welcome to AdGenius AI", read: false, time: "1m ago" },
+          { id: 2, text: "Start your first campaign", read: false, time: "2m ago" },
+        ];
+        setNotifications(defaults);
+        localStorage.setItem('adgenius_notifications', JSON.stringify(defaults));
+      }
+    }
+  }, []);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    function handleKeyDown(e) {
+      // Don't trigger if user is typing in an input
+      const activeElement = document.activeElement;
+      const isTyping = activeElement.tagName === 'INPUT' ||
+                      activeElement.tagName === 'TEXTAREA' ||
+                      activeElement.isContentEditable;
+
+      if (e.key === "/" && !isTyping) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+        if (activeElement === searchInputRef.current) {
+          searchInputRef.current?.blur();
+        }
+      }
+    }
+
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
@@ -46,16 +80,25 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   return (
@@ -68,10 +111,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 sm:block">
+              <kbd className="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -81,6 +131,8 @@ export default function Header({ title = "Dashboard", children }) {
               onClick={() => setNotifOpen(!notifOpen)}
               className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               aria-label="Notifications"
+              aria-expanded={notifOpen}
+              aria-haspopup="true"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
