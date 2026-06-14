@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req) {
@@ -8,6 +10,26 @@ export async function GET(req) {
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    }
+
+    // Security: Verify session to prevent IDOR
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+        },
+      }
+    )
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user || user.id !== userId) {
+      return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 })
     }
 
     if (!supabaseAdmin) {
