@@ -34,6 +34,7 @@ export default function Header({ title = "Dashboard", children }) {
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -46,8 +47,24 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    function handleKeyDown(e) {
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName) && !document.activeElement.isContentEditable) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +85,15 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 sm:block">
+              /
+            </kbd>
           </div>
 
           {/* Notifications */}
@@ -106,19 +128,23 @@ export default function Header({ title = "Dashboard", children }) {
                     <p className="p-4 text-center text-xs text-slate-500">No notifications</p>
                   ) : (
                     notifications.map((n) => (
-                      <div 
+                      <button
                         key={n.id} 
                         onClick={() => markAsRead(n.id)}
-                        className={`flex flex-col gap-1 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
+                        className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                          <span className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                             {n.text}
-                          </p>
-                          {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
+                          </span>
+                          {!n.read && (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600">
+                              <span className="sr-only">Unread</span>
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
