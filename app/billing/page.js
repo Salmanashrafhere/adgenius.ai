@@ -89,7 +89,7 @@ export default function BillingPage() {
             <div className="mb-12">
               <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold tracking-tight">Simple, transparent pricing</h2>
-                <p className="mt-2 text-lg text-slate-600">Choose the plan that's right for your business.</p>
+                <p className="mt-2 text-lg text-slate-600">Choose the plan that&apos;s right for your business.</p>
               </div>
 
               <div className="grid gap-8 lg:grid-cols-3">
