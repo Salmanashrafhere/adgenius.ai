@@ -14,11 +14,11 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
-    const { data: campaigns, error } = await supabaseAdmin
+    const { data: campaignsData, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
         *,
-        ad_creatives(*)
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -26,6 +26,16 @@ export async function GET(req) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // Map to reduce payload size by keeping only IDs for ad_creatives
+    // while providing a pre-calculated adsCount for the frontend
+    const campaigns = (campaignsData || []).map(campaign => ({
+      ...campaign,
+      adsCount: campaign.ad_creatives?.length || 0,
+      // We keep the array but only with IDs to maintain .length compatibility
+      // without the heavy text payloads of ad_creatives
+      ad_creatives: campaign.ad_creatives || []
+    }));
 
     return NextResponse.json({
       success: true,
