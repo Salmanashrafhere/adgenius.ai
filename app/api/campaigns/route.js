@@ -14,11 +14,19 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
-    const { data: campaigns, error } = await supabaseAdmin
+    // Optimized selection for list views: only select fields needed by Dashboard and My Campaigns
+    // Slim down ad_creatives to only IDs to drastically reduce payload size
+    const { data: rawCampaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
-        *,
-        ad_creatives(*)
+        id,
+        name,
+        platform,
+        status,
+        created_at,
+        product_url,
+        goal,
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -26,6 +34,12 @@ export async function GET(req) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
+
+    // Map the response to include adsCount for frontend convenience while maintaining ad_creatives[] for backward compatibility
+    const campaigns = (rawCampaigns || []).map(campaign => ({
+      ...campaign,
+      adsCount: campaign.ad_creatives?.length || 0
+    }))
 
     return NextResponse.json({
       success: true,
