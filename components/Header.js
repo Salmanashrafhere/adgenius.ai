@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -16,6 +16,23 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -25,7 +42,6 @@ export default function Header({ title = "Dashboard", children }) {
       }
     }
   }, []);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
     { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
@@ -68,10 +84,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 items-center gap-1 sm:flex">
+              <kbd className="flex h-5 items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                /
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
