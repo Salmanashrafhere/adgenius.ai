@@ -16,7 +16,17 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
+    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
+    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
+  ]);
+
+  const menuRef = useRef(null);
+  const notifRef = useRef(null);
+  const searchInputRef = useRef(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
@@ -25,19 +35,20 @@ export default function Header({ title = "Dashboard", children }) {
       }
     }
   }, []);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
-  
-  const menuRef = useRef(null);
-  const notifRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName) && !e.target.isContentEditable) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
@@ -46,8 +57,12 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+    window.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +83,15 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search across platform"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-10 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1.5 font-mono text-[10px] font-medium text-slate-500 sm:flex">
+              <span>/</span>
+            </div>
           </div>
 
           {/* Notifications */}
