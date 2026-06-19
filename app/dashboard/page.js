@@ -306,8 +306,14 @@ export default function DashboardPage() {
                     {campaigns.map((c) => (
                       <tr key={c.id} className="group transition hover:bg-slate-50/50">
                         <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">{c.name}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{platformBadge(c.platform)}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{statusBadge(c.status)}</td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={platformBadge(c.platform)}>
+                            {Array.isArray(c.platform) ? c.platform[0] : c.platform}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={statusBadge(c.status)}>{c.status}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-600">{c.adsCount || 0} ads</td>
                         <td className="whitespace-nowrap px-6 py-4 text-slate-500">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-right">
@@ -316,6 +322,7 @@ export default function DashboardPage() {
                               onClick={() => router.push(`/campaigns/${c.id}`)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition"
                               title="View"
+                              aria-label={`View ${c.name} campaign`}
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -323,6 +330,7 @@ export default function DashboardPage() {
                               onClick={() => downloadCampaign(c.name)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
                               title="Download"
+                              aria-label={`Download ${c.name} campaign`}
                             >
                               <Download className="h-4 w-4" />
                             </button>
@@ -330,6 +338,7 @@ export default function DashboardPage() {
                               onClick={() => removeCampaign(c.id)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
                               title="Delete"
+                              aria-label={`Delete ${c.name} campaign`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
