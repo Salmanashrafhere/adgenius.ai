@@ -1,0 +1,4 @@
+## 2025-06-19 - [CRITICAL] Fix IDOR in Campaign Generation
+**Vulnerability:** The campaign generation API endpoint (`/api/generate`) accepted a `userId` directly from the request body and used it with a service role client (`supabaseAdmin`) to insert records. This allowed any authenticated (or even unauthenticated if the route wasn't protected) user to create data for any other user by simply providing their UUID.
+**Learning:** Using `supabaseAdmin` bypasses Row Level Security (RLS). When using administrative clients in API routes, it is mandatory to manually verify the user's identity via session cookies rather than trusting client-provided identifiers.
+**Prevention:** Implement a centralized `lib/supabaseServer.js` helper that uses `@supabase/ssr` to create a session-aware client. Always verify the user via `supabase.auth.getUser()` and use the returned `user.id` for sensitive database operations.
