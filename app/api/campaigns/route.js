@@ -14,11 +14,19 @@ export async function GET(req) {
       return NextResponse.json({ error: 'Database connection not configured' }, { status: 500 })
     }
 
+    // Optimize payload by selecting only necessary fields and reducing ad_creatives join
+    // We include all fields used by the dashboard and campaigns list view.
     const { data: campaigns, error } = await supabaseAdmin
       .from('campaigns')
       .select(`
-        *,
-        ad_creatives(*)
+        id,
+        name,
+        platform,
+        status,
+        created_at,
+        product_url,
+        goal,
+        ad_creatives(id)
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -27,9 +35,15 @@ export async function GET(req) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    // Map response to include adsCount for frontend and keep ad_creatives slim
+    const optimizedCampaigns = (campaigns || []).map(campaign => ({
+      ...campaign,
+      adsCount: campaign.ad_creatives?.length || 0
+    }))
+
     return NextResponse.json({
       success: true,
-      campaigns
+      campaigns: optimizedCampaigns
     })
   } catch (error) {
     console.error('Fetch campaigns error:', error)
