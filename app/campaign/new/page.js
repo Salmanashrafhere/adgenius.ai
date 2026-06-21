@@ -255,8 +255,17 @@ export default function NewCampaignPage() {
                   <h2 className="text-3xl font-bold tracking-tight">What are we promoting?</h2>
                   <p className="mt-3 text-lg text-slate-600">Paste your product URL to get started.</p>
                 </div>
-                <div className="mt-10">
+                <form
+                  className="mt-10"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (productUrl) setStep(2);
+                    else showToast("Please enter a URL", "error");
+                  }}
+                >
+                  <label htmlFor="product-url" className="sr-only">Product URL</label>
                   <input
+                    id="product-url"
                     type="url"
                     value={productUrl}
                     onChange={(e) => setProductUrl(e.target.value)}
@@ -264,15 +273,12 @@ export default function NewCampaignPage() {
                     className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 py-4 px-6 text-lg focus:border-indigo-600 focus:bg-white focus:outline-none transition-all"
                   />
                   <button
-                    onClick={() => {
-                      if (productUrl) setStep(2);
-                      else showToast("Please enter a URL", "error");
-                    }}
+                    type="submit"
                     className="mt-6 w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl hover:bg-indigo-500 transition-all active:scale-95"
                   >
                     Analyze Product
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
@@ -368,8 +374,20 @@ export default function NewCampaignPage() {
                           {campaignData.platform[0]}
                         </span>
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); copyAdText({ headline: h, body: campaignData.bodycopies[i % campaignData.bodycopies.length], cta: campaignData.ctas[i % campaignData.ctas.length] }); }} className="p-2 text-slate-400 hover:text-indigo-600"><Copy className="h-4 w-4" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); showToast("Downloading...", "info"); }} className="p-2 text-slate-400 hover:text-indigo-600"><Download className="h-4 w-4" /></button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyAdText({ headline: h, body: campaignData.bodycopies[i % campaignData.bodycopies.length], cta: campaignData.ctas[i % campaignData.ctas.length] }); }}
+                            className="p-2 text-slate-400 hover:text-indigo-600"
+                            aria-label="Copy ad text"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); showToast("Downloading...", "info"); }}
+                            className="p-2 text-slate-400 hover:text-indigo-600"
+                            aria-label="Download ad creative"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                       <h3 className="text-xl font-bold mb-3">{h}</h3>
@@ -417,7 +435,11 @@ export default function NewCampaignPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedAd(null)} />
           <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <button onClick={() => setSelectedAd(null)} className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur hover:bg-white/40 transition">
+            <button
+              onClick={() => setSelectedAd(null)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur hover:bg-white/40 transition"
+              aria-label="Close modal"
+            >
               <X className="h-5 w-5" />
             </button>
             <div className="h-64 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white">
