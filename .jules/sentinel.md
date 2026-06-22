@@ -1,0 +1,4 @@
+## 2025-05-15 - Authenticated User ID vs Client-Side User ID (IDOR)
+**Vulnerability:** Several API routes (`/api/campaigns`, `/api/generate`) were accepting `userId` directly from the client (via query parameters or request body) and using it to query or insert data into Supabase using `supabaseAdmin`. This allowed any authenticated (or even unauthenticated, in some cases) user to access or modify data for any other `userId` if they knew or guessed the ID.
+**Learning:** Even when using `supabaseAdmin` to bypass RLS for administrative tasks, server-side session verification must be performed to identify the actual user. Relying on client-provided IDs is a classic Insecure Direct Object Reference (IDOR) pattern.
+**Prevention:** Always retrieve the user ID from the authenticated session using `supabase.auth.getUser()` on the server side. A centralized utility like `lib/supabaseServer.js` helps standardize the creation of a session-aware Supabase client.
