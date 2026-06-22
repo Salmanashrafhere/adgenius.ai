@@ -1,0 +1,28 @@
+
+> adgenius-saas@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.2:3000
+   - Experiments (use with caution):
+     · serverActions
+
+ ✓ Starting...
+ ✓ Ready in 1583ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 6.2s (632 modules)
+ GET /login 200 in 6909ms
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 641ms (115 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1214ms (699 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /dashboard 200 in 1689ms
+ ○ Compiling /api/campaigns ...
+ ✓ Compiled /api/campaigns in 1116ms (752 modules)
+ GET /api/campaigns?userId=test-user-id&limit=5 500 in 1792ms
+ ✓ Compiled in 752ms (766 modules)
+ GET /login 200 in 367ms
+ GET /dashboard 200 in 111ms
+ GET /api/campaigns?userId=test-user-id&limit=5 500 in 96ms
