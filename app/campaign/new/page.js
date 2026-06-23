@@ -255,7 +255,14 @@ export default function NewCampaignPage() {
                   <h2 className="text-3xl font-bold tracking-tight">What are we promoting?</h2>
                   <p className="mt-3 text-lg text-slate-600">Paste your product URL to get started.</p>
                 </div>
-                <div className="mt-10">
+                <form
+                  className="mt-10"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (productUrl) setStep(2);
+                    else showToast("Please enter a URL", "error");
+                  }}
+                >
                   <input
                     type="url"
                     value={productUrl}
@@ -264,15 +271,12 @@ export default function NewCampaignPage() {
                     className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 py-4 px-6 text-lg focus:border-indigo-600 focus:bg-white focus:outline-none transition-all"
                   />
                   <button
-                    onClick={() => {
-                      if (productUrl) setStep(2);
-                      else showToast("Please enter a URL", "error");
-                    }}
+                    type="submit"
                     className="mt-6 w-full rounded-2xl bg-indigo-600 py-4 text-lg font-bold text-white shadow-xl hover:bg-indigo-500 transition-all active:scale-95"
                   >
                     Analyze Product
                   </button>
-                </div>
+                </form>
               </div>
             )}
 
