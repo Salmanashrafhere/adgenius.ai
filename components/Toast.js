@@ -43,6 +43,7 @@ export default function Toast({ message, type = "success", onClose }) {
           setTimeout(onClose, 300);
         }}
         className="rounded-lg p-1 text-slate-400 transition hover:bg-white/50 hover:text-slate-600"
+        aria-label="Close notification"
       >
         <X className="h-4 w-4" />
       </button>
