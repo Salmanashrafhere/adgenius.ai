@@ -74,7 +74,8 @@ export default function CampaignsPage() {
         // Fetch campaigns from API
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            // Bolt Optimization: Use the minimal payload to speed up page load.
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
