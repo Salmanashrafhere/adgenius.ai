@@ -16,39 +16,52 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('adgenius_user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    }
-  }, []);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
     { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
     { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
   ]);
+  const [isMac, setIsMac] = useState(false);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const searchRef = useRef(null);
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('adgenius_user');
+      if (userData) {
+        setUser(JSON.parse(userData));
       }
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
+      setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
         setNotifOpen(false);
       }
-    }
+    };
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const markAsRead = (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -68,10 +81,17 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search campaigns"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 sm:block hidden">
+              <kbd className="inline-flex items-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400 shadow-sm">
+                {isMac ? '⌘K' : 'Ctrl K'}
+              </kbd>
+            </div>
           </div>
 
           {/* Notifications */}
@@ -155,6 +175,7 @@ export default function Header({ title = "Dashboard", children }) {
                 <Link
                   href="/settings"
                   prefetch={false}
+                  role="menuitem"
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -164,6 +185,7 @@ export default function Header({ title = "Dashboard", children }) {
                 <Link
                   href="/billing"
                   prefetch={false}
+                  role="menuitem"
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -173,6 +195,7 @@ export default function Header({ title = "Dashboard", children }) {
                 <Link
                   href="/settings"
                   prefetch={false}
+                  role="menuitem"
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -183,6 +206,7 @@ export default function Header({ title = "Dashboard", children }) {
                 <Link
                   href="/login"
                   prefetch={false}
+                  role="menuitem"
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition hover:bg-red-50"
                   onClick={() => setMenuOpen(false)}
                 >
