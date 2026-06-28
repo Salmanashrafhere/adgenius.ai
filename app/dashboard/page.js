@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -68,7 +68,8 @@ export default function DashboardPage() {
         // Fetch campaigns from API
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            // Optimized fetch: only get essential data for the dashboard list
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false&limit=5`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
@@ -153,6 +154,11 @@ export default function DashboardPage() {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // Performance: Memoize total ads calculation to prevent redundant work on every render
+  const totalAdsGenerated = useMemo(() => {
+    return campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0);
+  }, [campaigns]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -231,7 +237,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+              { label: "Ads Generated", value: totalAdsGenerated.toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
               { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
               { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
             ].map((s) => (
