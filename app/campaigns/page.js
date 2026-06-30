@@ -8,15 +8,10 @@ import Header from "@/components/Header";
 import { 
   Search, 
   Plus, 
-  Filter, 
-  ChevronDown, 
   Eye, 
-  Download, 
   Trash2,
   Calendar,
   Layers,
-  MoreVertical,
-  X,
 } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -71,10 +66,10 @@ export default function CampaignsPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch campaigns from API with optimization (no full ad creative data)
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
@@ -103,7 +98,12 @@ export default function CampaignsPage() {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Update local storage too
+    const savedCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    const updatedSaved = savedCampaigns.filter(c => c.id !== id);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedSaved));
+
     showToast("Campaign deleted", "success");
   };
 
@@ -164,7 +164,9 @@ export default function CampaignsPage() {
                   <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5">
-                        <span className={platformBadge(campaign.platform)}>{campaign.platform[0]}</span>
+                        <span className={platformBadge(campaign.platform)}>
+                          {Array.isArray(campaign.platform) ? campaign.platform[0] : campaign.platform}
+                        </span>
                       </div>
                     </div>
                   </div>

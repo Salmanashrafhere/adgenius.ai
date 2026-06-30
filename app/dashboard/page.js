@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -12,13 +12,7 @@ import {
   Zap,
   Download,
   Trash2,
-  Bell,
-  CheckCircle2,
-  Info,
-  AlertCircle,
-  X,
   Eye,
-  MoreVertical,
 } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -46,11 +40,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toasts, setToasts] = useState([]);
-  const notifRef = useRef(null);
 
   const showToast = (message, type = "success") => {
     const id = Date.now();
@@ -65,22 +56,22 @@ export default function DashboardPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch campaigns from API with optimization (limit 5, no full data)
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&limit=5&full=false`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
             } else {
               // Fallback to local storage if API fails
               const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns).slice(0, 5));
             }
           } catch (err) {
             console.error('Failed to fetch campaigns:', err);
             const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns).slice(0, 5));
           } finally {
             setLoading(false);
           }
@@ -90,60 +81,19 @@ export default function DashboardPage() {
       } else {
         setLoading(false);
       }
-      
-      // Get notifications 
-      const savedNotifications = localStorage.getItem('adgenius_notifications');
-      if (savedNotifications) {
-        setNotifications(JSON.parse(savedNotifications));
-      } else {
-        // Default notifications 
-        const defaultNotifications = [ 
-          { id: 1, title: 'Welcome to AdGenius AI!', message: 'Start creating your first campaign', time: 'Just now', read: false, type: 'info' }, 
-          { id: 2, title: 'Free Trial Active', message: 'You have 10 credits remaining', time: '1 hour ago', read: false, type: 'success' } 
-        ];
-        setNotifications(defaultNotifications);
-        localStorage.setItem('adgenius_notifications', JSON.stringify(defaultNotifications));
-      }
     }
   }, []);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotifications(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('adgenius_user');
-    router.push('/login');
-  };
-
-  const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    setNotifications(updated);
-    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
-  };
-
-  const clearAllNotifications = () => {
-    setNotifications([]);
-    localStorage.setItem('adgenius_notifications', JSON.stringify([]));
-  };
-
-  const markAsRead = (id) => {
-    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
-    setNotifications(updated);
-    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
-  };
 
   const removeCampaign = (id) => {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Update local storage too
+    const savedCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    const updatedSaved = savedCampaigns.filter(c => c.id !== id);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedSaved));
+
     showToast("Campaign deleted successfully", "success");
   };
 
@@ -151,7 +101,18 @@ export default function DashboardPage() {
     showToast(`Preparing download for ${name}...`, "info");
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Performance: Memoize stats calculations
+  const totalAdsGenerated = useMemo(() => {
+    return campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0);
+  }, [campaigns]);
+
+  // Performance: Memoize stats cards
+  const statsCards = useMemo(() => [
+    { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ads Generated", value: totalAdsGenerated.toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+  ], [campaigns.length, totalAdsGenerated, user?.credits]);
 
   if (loading) {
     return (
@@ -167,74 +128,12 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
-        <Header title="Dashboard">
-          <div className="flex items-center gap-4">
-            {/* Notifications Bell */}
-            <div className="relative" ref={notifRef}>
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 active:scale-95"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5 z-50">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-4 pb-2">
-                    <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                    <div className="flex gap-2">
-                      <button onClick={markAllAsRead} className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700">Mark all read</button>
-                      <button onClick={clearAllNotifications} className="text-[10px] font-semibold text-red-600 hover:text-red-700">Clear all</button>
-                    </div>
-                  </div>
-                  <div className="max-h-[400px] overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-500">No notifications</div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => markAsRead(n.id)}
-                          className={`flex items-start gap-3 border-b border-slate-50 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
-                        >
-                          <div className="mt-1 shrink-0">
-                            {n.type === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                            {n.type === 'info' && <Info className="h-4 w-4 text-blue-500" />}
-                            {n.type === 'warning' && <AlertCircle className="h-4 w-4 text-amber-500" />}
-                            {n.type === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className={`text-xs ${!n.read ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
-                              {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />}
-                            </div>
-                            <p className="mt-0.5 truncate text-[10px] text-slate-500">{n.message}</p>
-                            <span className="mt-1 block text-[9px] text-slate-400">{n.time}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </Header>
+        <Header title="Dashboard" />
 
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            ].map((s) => (
+            {statsCards.map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <div>
@@ -306,8 +205,14 @@ export default function DashboardPage() {
                     {campaigns.map((c) => (
                       <tr key={c.id} className="group transition hover:bg-slate-50/50">
                         <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">{c.name}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{platformBadge(c.platform)}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{statusBadge(c.status)}</td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={platformBadge(c.platform)}>
+                            {Array.isArray(c.platform) ? c.platform[0] : c.platform}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={statusBadge(c.status)}>{c.status}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-600">{c.adsCount || 0} ads</td>
                         <td className="whitespace-nowrap px-6 py-4 text-slate-500">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-right">
