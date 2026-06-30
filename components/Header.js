@@ -16,16 +16,20 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== 'undefined') {
+      setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.userAgent));
       const userData = localStorage.getItem('adgenius_user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
     }
   }, []);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
     { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
@@ -34,10 +38,22 @@ export default function Header({ title = "Dashboard", children }) {
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const searchRef = useRef(null);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    function handleKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+
     function handleClickOutside(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
@@ -46,8 +62,13 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+
+    document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const markAsRead = (id) => {
@@ -68,10 +89,18 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search campaigns"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            {mounted && (
+              <div className="pointer-events-none absolute right-2.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 shadow-sm">
+                <kbd className="font-sans">{isMac ? "⌘" : "Ctrl"}</kbd>
+                <kbd className="font-sans">K</kbd>
+              </div>
+            )}
           </div>
 
           {/* Notifications */}
@@ -140,6 +169,7 @@ export default function Header({ title = "Dashboard", children }) {
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
+              aria-label="User menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
                 {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
