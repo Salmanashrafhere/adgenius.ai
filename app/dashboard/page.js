@@ -68,7 +68,7 @@ export default function DashboardPage() {
         // Fetch campaigns from API
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false&limit=5`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
