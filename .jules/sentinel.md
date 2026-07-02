@@ -1,0 +1,4 @@
+## 2025-05-15 - [HIGH] IDOR in API Routes
+**Vulnerability:** API routes (`/api/campaigns`, `/api/generate`) were accepting `userId` from client-provided input (query params or request body) and using it to filter or insert database records without verifying the authenticated session.
+**Learning:** Even if an application uses Supabase for authentication on the frontend, API routes must explicitly verify the user's identity using a server-side client that checks the session cookie. Relying on client-provided identifiers is a classic IDOR pattern.
+**Prevention:** Always use `supabase.auth.getUser()` with a server-side client (e.g., via `@supabase/ssr`) in Next.js API routes to obtain the authenticated user's ID. Never trust a `userId` passed in the request body or query parameters for authorization-sensitive operations.
