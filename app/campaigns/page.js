@@ -192,7 +192,11 @@ export default function CampaignsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Link>
-                      <button onClick={() => deleteCampaign(campaign.id)} className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                      <button
+                        onClick={() => deleteCampaign(campaign.id)}
+                        className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
+                        aria-label="Delete campaign"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
