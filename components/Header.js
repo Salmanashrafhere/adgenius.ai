@@ -16,15 +16,32 @@ import {
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+  const searchInputRef = useRef(null);
   
   useEffect(() => {
+    setMounted(true);
+    setIsMac(/Mac|iPhone|iPod|iPad/i.test(navigator.userAgent));
+
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
     }
+
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
@@ -68,10 +85,18 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search campaigns"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            {mounted && (
+              <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-200 bg-slate-50 text-[10px] font-medium text-slate-400">
+                <kbd className="font-sans">{isMac ? '⌘' : 'Ctrl'}</kbd>
+                <kbd className="font-sans">K</kbd>
+              </div>
+            )}
           </div>
 
           {/* Notifications */}
