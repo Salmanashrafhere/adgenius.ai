@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, createClient } from "@/lib/supabase";
 
 export const maxDuration = 60 // Vercel timeout fix 
 export const runtime = "nodejs";
@@ -97,15 +97,20 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
     }
 
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+
+    const userId = user.id;
 
     const platforms = normalizePlatforms(platform);
     if (platforms.length === 0) {
