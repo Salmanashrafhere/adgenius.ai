@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [statsTotals, setStatsTotals] = useState({ totalCount: 0, totalAdsCount: 0 });
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -65,22 +66,27 @@ export default function DashboardPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch campaigns from API with optimization:
+        // full=false (minimal payload) and limit=5 (only recent)
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false&limit=5`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
+              setStatsTotals({
+                totalCount: data.totalCount || 0,
+                totalAdsCount: data.totalAdsCount || 0
+              });
             } else {
               // Fallback to local storage if API fails
               const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns).slice(0, 5));
             }
           } catch (err) {
             console.error('Failed to fetch campaigns:', err);
             const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns).slice(0, 5));
           } finally {
             setLoading(false);
           }
@@ -152,6 +158,20 @@ export default function DashboardPage() {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Memoize stats to avoid unnecessary re-renders
+  const stats = useMemo(() => {
+    // If we have API stats, use them; otherwise fallback to manual calculation
+    const totalCampaigns = statsTotals.totalCount || campaigns.length;
+    const totalAds = statsTotals.totalAdsCount || campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0);
+
+    return [
+      { label: "Total Campaigns", value: totalCampaigns.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
+      { label: "Ads Generated", value: totalAds.toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+      { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+      { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+    ];
+  }, [campaigns, user?.credits, statsTotals]);
 
   if (loading) {
     return (
@@ -229,12 +249,7 @@ export default function DashboardPage() {
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            ].map((s) => (
+            {stats.map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <div>

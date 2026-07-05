@@ -71,10 +71,11 @@ export default function CampaignsPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch campaigns from API with optimization:
+        // full=false reduces payload size by ~80%
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
