@@ -10,27 +10,40 @@ import {
   User, 
   CreditCard, 
   Settings, 
-  LogOut 
+  LogOut,
+  X
 } from "lucide-react";
 
 export default function Header({ title = "Dashboard", children }) {
   const [user, setUser] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [mounted, setMounted] = useState(false);
+  const searchInputRef = useRef(null);
   
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('adgenius_user');
       if (userData) {
         setUser(JSON.parse(userData));
       }
+
+      const savedNotifications = localStorage.getItem('adgenius_notifications');
+      if (savedNotifications) {
+        setNotifications(JSON.parse(savedNotifications));
+      } else {
+        const defaultNotifications = [
+          { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
+          { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
+          { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
+        ];
+        setNotifications(defaultNotifications);
+        localStorage.setItem('adgenius_notifications', JSON.stringify(defaultNotifications));
+      }
     }
   }, []);
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: "Campaign Ready: Nike Shoes", read: false, time: "2m ago" },
-    { id: 2, text: "3 new ads generated", read: false, time: "1h ago" },
-    { id: 3, text: "Welcome to AdGenius AI", read: false, time: "1d ago" },
-  ]);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
@@ -46,16 +59,36 @@ export default function Header({ title = "Dashboard", children }) {
         setNotifOpen(false);
       }
     }
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const markAsRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    localStorage.setItem('adgenius_notifications', JSON.stringify(updated));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    localStorage.setItem('adgenius_notifications', JSON.stringify([]));
   };
 
   return (
@@ -68,10 +101,19 @@ export default function Header({ title = "Dashboard", children }) {
           <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              ref={searchInputRef}
               type="search"
               placeholder="Search..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+              aria-label="Search campaigns"
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-12 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
+            {mounted && (
+              <div className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 sm:flex">
+                <kbd className="flex h-5 items-center justify-center rounded border border-slate-200 bg-slate-50 px-1.5 font-sans text-[10px] font-medium text-slate-400">
+                  {navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'} K
+                </kbd>
+              </div>
+            )}
           </div>
 
           {/* Notifications */}
@@ -94,12 +136,20 @@ export default function Header({ title = "Dashboard", children }) {
               <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5">
                 <div className="flex items-center justify-between px-4 pb-2 border-b border-slate-100">
                   <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                  <button 
-                    onClick={markAllAsRead}
-                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Mark all read
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      Mark all read
+                    </button>
+                    <button
+                      onClick={clearAllNotifications}
+                      className="text-[11px] font-medium text-red-600 hover:text-red-700"
+                    >
+                      Clear all
+                    </button>
+                  </div>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
@@ -113,10 +163,11 @@ export default function Header({ title = "Dashboard", children }) {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className={`text-sm ${!n.read ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-                            {n.text}
+                            {n.text || n.title}
                           </p>
                           {!n.read && <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-600" />}
                         </div>
+                        {n.message && <p className="text-[11px] text-slate-500 truncate">{n.message}</p>}
                         <span className="text-[10px] text-slate-400">{n.time}</span>
                       </div>
                     ))
