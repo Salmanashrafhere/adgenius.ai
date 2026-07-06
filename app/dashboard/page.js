@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -16,9 +16,7 @@ import {
   CheckCircle2,
   Info,
   AlertCircle,
-  X,
   Eye,
-  MoreVertical,
 } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -46,6 +44,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [stats, setStats] = useState({ totalCount: 0, totalAdsCount: 0 });
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -66,27 +65,35 @@ export default function DashboardPage() {
         setUser(parsedUser);
         
         // Fetch campaigns from API
-        const fetchCampaigns = async () => {
+        const fetchDashboardData = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false&limit=10`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
+              setStats({
+                totalCount: data.totalCount,
+                totalAdsCount: data.totalAdsCount
+              });
             } else {
               // Fallback to local storage if API fails
-              const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+              const savedCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+              setCampaigns(savedCampaigns.slice(0, 10));
+              const totalAds = savedCampaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0);
+              setStats({ totalCount: savedCampaigns.length, totalAdsCount: totalAds });
             }
           } catch (err) {
-            console.error('Failed to fetch campaigns:', err);
-            const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+            console.error('Failed to fetch dashboard data:', err);
+            const savedCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+            setCampaigns(savedCampaigns.slice(0, 10));
+            const totalAds = savedCampaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0);
+            setStats({ totalCount: savedCampaigns.length, totalAdsCount: totalAds });
           } finally {
             setLoading(false);
           }
         };
 
-        fetchCampaigns();
+        fetchDashboardData();
       } else {
         setLoading(false);
       }
@@ -117,11 +124,6 @@ export default function DashboardPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('adgenius_user');
-    router.push('/login');
-  };
-
   const markAllAsRead = () => {
     const updated = notifications.map(n => ({ ...n, read: true }));
     setNotifications(updated);
@@ -143,7 +145,14 @@ export default function DashboardPage() {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Sync with local storage
+    const saved = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(saved.filter(c => c.id !== id)));
+
+    // Decrement total count
+    setStats(prev => ({ ...prev, totalCount: Math.max(0, prev.totalCount - 1) }));
+
     showToast("Campaign deleted successfully", "success");
   };
 
@@ -152,6 +161,13 @@ export default function DashboardPage() {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const statsCards = useMemo(() => [
+    { label: "Total Campaigns", value: stats.totalCount.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ads Generated", value: stats.totalAdsCount.toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Credits Remaining", value: (user?.credits || 0).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+  ], [stats, user?.credits]);
 
   if (loading) {
     return (
@@ -169,11 +185,11 @@ export default function DashboardPage() {
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
         <Header title="Dashboard">
           <div className="flex items-center gap-4">
-            {/* Notifications Bell */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 active:scale-95"
+                aria-label="Notifications"
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
@@ -227,14 +243,8 @@ export default function DashboardPage() {
         </Header>
 
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-          {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            ].map((s) => (
+            {statsCards.map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <div>
@@ -249,7 +259,6 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Quick Actions */}
           <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">Quick actions</h2>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -269,7 +278,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent Campaigns Table */}
           <section className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-slate-100 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">Recent campaigns</h2>
@@ -315,21 +323,21 @@ export default function DashboardPage() {
                             <button
                               onClick={() => router.push(`/campaigns/${c.id}`)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition"
-                              title="View"
+                              aria-label="View"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => downloadCampaign(c.name)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
-                              title="Download"
+                              aria-label="Download"
                             >
                               <Download className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => removeCampaign(c.id)}
                               className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                              title="Delete"
+                              aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

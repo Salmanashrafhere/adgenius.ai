@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -8,15 +8,10 @@ import Header from "@/components/Header";
 import { 
   Search, 
   Plus, 
-  Filter, 
-  ChevronDown, 
   Eye, 
-  Download, 
   Trash2,
   Calendar,
   Layers,
-  MoreVertical,
-  X,
 } from "lucide-react";
 import { ToastContainer } from "@/components/Toast";
 
@@ -71,10 +66,12 @@ export default function CampaignsPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch campaigns from API with optimization:
+        // - full=false to get minimal payload
+        // We use the default higher limit for this page.
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&full=false`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
@@ -101,17 +98,31 @@ export default function CampaignsPage() {
 
   const deleteCampaign = (id) => {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
-    const updated = campaigns.filter(c => c.id !== id);
-    setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Update local state first
+    setCampaigns(prev => prev.filter(c => c.id !== id));
+
+    // Sync with local storage
+    const saved = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(saved.filter(c => c.id !== id)));
+
     showToast("Campaign deleted", "success");
   };
 
-  const filteredCampaigns = campaigns.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Memoize filtered campaigns to improve search performance
+  const filteredCampaigns = useMemo(() => {
+    return campaigns.filter(c =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [campaigns, searchQuery]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -135,7 +146,7 @@ export default function CampaignsPage() {
           <Link
             href="/campaign/new"
             prefetch={false}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 active:scale-95"
+            className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-500 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             New Campaign
@@ -164,7 +175,7 @@ export default function CampaignsPage() {
                   <div className={`h-24 w-full bg-gradient-to-br ${colors[index % colors.length]} p-4`}>
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5">
-                        <span className={platformBadge(campaign.platform)}>{campaign.platform[0]}</span>
+                        <span className={platformBadge(campaign.platform)}>{Array.isArray(campaign.platform) ? campaign.platform[0][0] : campaign.platform[0]}</span>
                       </div>
                     </div>
                   </div>
@@ -188,11 +199,16 @@ export default function CampaignsPage() {
                         href={`/campaigns/${campaign.id}`}
                         prefetch={false}
                         className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-50 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-100 active:scale-95"
+                        aria-label="View campaign"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Link>
-                      <button onClick={() => deleteCampaign(campaign.id)} className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                      <button
+                        onClick={() => deleteCampaign(campaign.id)}
+                        className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
+                        aria-label="Delete campaign"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
