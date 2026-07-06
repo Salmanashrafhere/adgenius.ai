@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
-import { supabaseAdmin } from "@/lib/supabase";
+import { createClient, supabaseAdmin } from "@/lib/supabase";
 
 export const maxDuration = 60 // Vercel timeout fix 
 export const runtime = "nodejs";
@@ -82,6 +82,13 @@ export async function POST(request) {
   const kill = setTimeout(() => controller.abort(), ROUTE_TIMEOUT_MS);
 
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ 
@@ -97,14 +104,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
-    }
-
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
     }
 
     const platforms = normalizePlatforms(platform);
@@ -203,7 +206,7 @@ export async function POST(request) {
       const { data: campaign, error: campaignError } = await supabaseAdmin
         .from('campaigns')
         .insert({
-          user_id: userId,
+          user_id: user.id,
           name: scraped.title,
           product_url: normalizedUrl,
           product_title: scraped.title,

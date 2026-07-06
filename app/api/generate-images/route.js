@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase";
 
 export const maxDuration = 120; // 2 minute timeout
 export const runtime = "nodejs";
@@ -101,17 +102,24 @@ async function queryHuggingFace(imagePrompt, apiKey) {
 }
 
 export async function POST(request) {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const hfKey = process.env.HUGGINGFACE_API_KEY;
-
-  if (!geminiKey || !hfKey) {
-    return NextResponse.json({ 
-      success: false, 
-      message: "Missing API keys (GEMINI_API_KEY or HUGGINGFACE_API_KEY)" 
-    }, { status: 500 });
-  }
-
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const hfKey = process.env.HUGGINGFACE_API_KEY;
+
+    if (!geminiKey || !hfKey) {
+      return NextResponse.json({
+        success: false,
+        message: "Missing API keys (GEMINI_API_KEY or HUGGINGFACE_API_KEY)"
+      }, { status: 500 });
+    }
+
     const { productTitle, headlines, tone, platform } = await request.json();
 
     if (!productTitle) {
