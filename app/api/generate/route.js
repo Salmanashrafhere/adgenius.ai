@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/gemini";
 import { extractProductMetadata, fetchProductHtml, normalizeProductUrl } from "@/lib/scrapeProduct";
-import { supabaseAdmin } from "@/lib/supabase";
+import { createClient, supabaseAdmin } from "@/lib/supabase";
 
 export const maxDuration = 60 // Vercel timeout fix 
 export const runtime = "nodejs";
@@ -82,11 +82,18 @@ export async function POST(request) {
   const kill = setTimeout(() => controller.abort(), ROUTE_TIMEOUT_MS);
 
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ 
         success: false, 
-        message: "Server configuration error: GEMINI_API_KEY is missing. Please add it to your environment variables." 
+        message: "Server configuration error"
       }, { status: 500 });
     }
 
@@ -97,14 +104,10 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { productUrl, platform, goal, tone, audienceTags, budget, userId } = body || {};
+    const { productUrl, platform, goal, tone, audienceTags, budget } = body || {};
 
     if (!productUrl || typeof productUrl !== "string") {
       return NextResponse.json({ success: false, message: "productUrl is required" }, { status: 400 });
-    }
-
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "userId is required" }, { status: 401 });
     }
 
     const platforms = normalizePlatforms(platform);
@@ -153,7 +156,7 @@ export async function POST(request) {
     } catch (e) {
       const aborted = e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"));
       if (aborted) {
-        return NextResponse.json({ success: false, message: "Request timed out after 30 seconds" }, { status: 504 });
+        return NextResponse.json({ success: false, message: "Request timed out" }, { status: 504 });
       }
       const msg = e instanceof Error ? e.message : "Failed to fetch product URL";
       const status = msg.includes("not allowed") || msg.includes("Invalid") ? 400 : 502;
@@ -183,7 +186,7 @@ export async function POST(request) {
       console.error("[Generate API] Gemini error:", e);
       const aborted = e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"));
       if (aborted) {
-        return NextResponse.json({ success: false, message: "Request timed out after 30 seconds" }, { status: 504 });
+        return NextResponse.json({ success: false, message: "Request timed out" }, { status: 504 });
       }
       
       // Return default data if parsing fails or Gemini fails as requested in FIX 1
@@ -203,7 +206,7 @@ export async function POST(request) {
       const { data: campaign, error: campaignError } = await supabaseAdmin
         .from('campaigns')
         .insert({
-          user_id: userId,
+          user_id: user.id,
           name: scraped.title,
           product_url: normalizedUrl,
           product_title: scraped.title,
@@ -276,7 +279,7 @@ export async function POST(request) {
       // Still return the generated content even if saving fails, but maybe add a warning
       return NextResponse.json({
         success: true,
-        warning: "Generated successfully but failed to save to database",
+        warning: "Generated successfully but failed to save",
         campaign: {
           title: scraped.title,
           description: scraped.description,
@@ -300,10 +303,10 @@ export async function POST(request) {
   } catch (e) {
     const aborted = e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"));
     if (aborted) {
-      return NextResponse.json({ success: false, message: "Request timed out after 30 seconds" }, { status: 504 });
+      return NextResponse.json({ success: false, message: "Request timed out" }, { status: 504 });
     }
     return NextResponse.json(
-      { success: false, message: e instanceof Error ? e.message : "Unexpected server error" },
+      { success: false, message: "Unexpected server error" },
       { status: 500 }
     );
   } finally {
