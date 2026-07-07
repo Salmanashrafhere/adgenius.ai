@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase";
 
 export const maxDuration = 120; // 2 minute timeout
 export const runtime = "nodejs";
@@ -39,7 +40,7 @@ Return ONLY JSON array of strings:
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini API failed: ${response.statusText}`);
+    throw new Error(`Gemini API failed`);
   }
 
   const data = await response.json();
@@ -50,7 +51,7 @@ Return ONLY JSON array of strings:
     return Array.isArray(prompts) ? prompts.slice(0, 4) : [];
   } catch (e) {
     console.error("Failed to parse Gemini response as JSON:", text);
-    throw new Error("Invalid response format from Gemini");
+    throw new Error("Invalid response format");
   }
 }
 
@@ -88,8 +89,7 @@ async function queryHuggingFace(imagePrompt, apiKey) {
     }
 
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Hugging Face API failed (${response.status}): ${errText}`);
+      throw new Error(`Hugging Face API failed`);
     }
 
     const buffer = await response.arrayBuffer();
@@ -101,18 +101,25 @@ async function queryHuggingFace(imagePrompt, apiKey) {
 }
 
 export async function POST(request) {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  const hfKey = process.env.HUGGINGFACE_API_KEY;
-
-  if (!geminiKey || !hfKey) {
-    return NextResponse.json({ 
-      success: false, 
-      message: "Missing API keys (GEMINI_API_KEY or HUGGINGFACE_API_KEY)" 
-    }, { status: 500 });
-  }
-
   try {
-    const { productTitle, headlines, tone, platform } = await request.json();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const hfKey = process.env.HUGGINGFACE_API_KEY;
+
+    if (!geminiKey || !hfKey) {
+      return NextResponse.json({
+        success: false,
+        message: "Server configuration error"
+      }, { status: 500 });
+    }
+
+    const { productTitle, tone, platform } = await request.json();
 
     if (!productTitle) {
       return NextResponse.json({ success: false, message: "productTitle is required" }, { status: 400 });
@@ -124,7 +131,7 @@ export async function POST(request) {
       imagePrompts = await callGeminiForPrompts(productTitle, platform || "All", tone || "Professional", geminiKey);
     } catch (e) {
       console.error("Gemini prompt generation failed:", e);
-      return NextResponse.json({ success: true, images: FALLBACK_IMAGES, message: "Using fallback gradients (Gemini failed)" });
+      return NextResponse.json({ success: true, images: FALLBACK_IMAGES, message: "Using fallback gradients" });
     }
 
     // 2. Generate images with Hugging Face
@@ -158,7 +165,7 @@ export async function POST(request) {
     console.error("Image generation route error:", e);
     return NextResponse.json({ 
       success: false, 
-      message: e.message || "Internal server error",
+      message: "Internal server error",
       images: FALLBACK_IMAGES.map(f => ({ ...f, type: "gradient" }))
     }, { status: 500 });
   }

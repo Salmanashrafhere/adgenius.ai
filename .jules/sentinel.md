@@ -1,0 +1,4 @@
+## 2025-05-14 - Fix IDOR and Authentication vulnerabilities in API routes
+**Vulnerability:** API routes (`/api/campaigns`, `/api/generate`, `/api/generate-images`) accepted a `userId` from the client (query param or body) and used it directly in database queries without verifying it against an authenticated session. This allowed any user to access or modify data belonging to any other user.
+**Learning:** In Next.js App Router applications using Supabase, client-side identifiers should never be trusted. Authentication must be verified on the server using `@supabase/ssr` to retrieve the user's identity from secure cookies.
+**Prevention:** Implement a server-side Supabase client helper that manages cookies and use `supabase.auth.getUser()` at the beginning of every sensitive API route to establish the true user identity. Replace all client-provided `userId` references with the verified server-side ID.
