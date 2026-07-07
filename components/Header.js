@@ -70,6 +70,7 @@ export default function Header({ title = "Dashboard", children }) {
             <input
               type="search"
               placeholder="Search..."
+              aria-label="Search"
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
             />
           </div>
@@ -137,9 +138,10 @@ export default function Header({ title = "Dashboard", children }) {
             <button
               type="button"
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99]"
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:bg-slate-50 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
+              aria-label="User menu"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 text-xs font-bold text-white">
                 {(user?.name || "U").split(' ').map(n => n[0]).join('').toUpperCase()}
