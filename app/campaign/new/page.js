@@ -368,8 +368,20 @@ export default function NewCampaignPage() {
                           {campaignData.platform[0]}
                         </span>
                         <div className="flex gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); copyAdText({ headline: h, body: campaignData.bodycopies[i % campaignData.bodycopies.length], cta: campaignData.ctas[i % campaignData.ctas.length] }); }} className="p-2 text-slate-400 hover:text-indigo-600"><Copy className="h-4 w-4" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); showToast("Downloading...", "info"); }} className="p-2 text-slate-400 hover:text-indigo-600"><Download className="h-4 w-4" /></button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyAdText({ headline: h, body: campaignData.bodycopies[i % campaignData.bodycopies.length], cta: campaignData.ctas[i % campaignData.ctas.length] }); }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded-lg"
+                            aria-label="Copy ad text"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); showToast("Downloading...", "info"); }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600 rounded-lg"
+                            aria-label="Download ad"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                       <h3 className="text-xl font-bold mb-3">{h}</h3>
@@ -417,7 +429,11 @@ export default function NewCampaignPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedAd(null)} />
           <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <button onClick={() => setSelectedAd(null)} className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur hover:bg-white/40 transition">
+            <button
+              onClick={() => setSelectedAd(null)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/20 p-2 text-white backdrop-blur hover:bg-white/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Close preview"
+            >
               <X className="h-5 w-5" />
             </button>
             <div className="h-64 bg-gradient-to-br from-indigo-500 to-purple-600 p-8 text-white">

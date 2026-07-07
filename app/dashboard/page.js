@@ -306,29 +306,36 @@ export default function DashboardPage() {
                     {campaigns.map((c) => (
                       <tr key={c.id} className="group transition hover:bg-slate-50/50">
                         <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">{c.name}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{platformBadge(c.platform)}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{statusBadge(c.status)}</td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={platformBadge(c.platform)}>{Array.isArray(c.platform) ? c.platform[0] : c.platform}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={statusBadge(c.status)}>{c.status}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-600">{c.adsCount || 0} ads</td>
                         <td className="whitespace-nowrap px-6 py-4 text-slate-500">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => router.push(`/campaigns/${c.id}`)}
-                              className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition"
+                              className="rounded-lg p-2 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-600"
+                              aria-label={`View ${c.name} campaign`}
                               title="View"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => downloadCampaign(c.name)}
-                              className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition"
+                              className="rounded-lg p-2 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                              aria-label={`Download ${c.name} campaign`}
                               title="Download"
                             >
                               <Download className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => removeCampaign(c.id)}
-                              className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                              className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                              aria-label={`Delete ${c.name} campaign`}
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />

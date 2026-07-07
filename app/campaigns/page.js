@@ -127,6 +127,7 @@ export default function CampaignsPage() {
             <input
               type="text"
               placeholder="Search campaigns..."
+              aria-label="Search campaigns"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
@@ -192,7 +193,11 @@ export default function CampaignsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Link>
-                      <button onClick={() => deleteCampaign(campaign.id)} className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95">
+                      <button
+                        onClick={() => deleteCampaign(campaign.id)}
+                        className="flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                        aria-label={`Delete ${campaign.name} campaign`}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
