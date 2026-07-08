@@ -167,64 +167,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       <div className="flex min-h-screen flex-col pb-20 lg:pb-0 lg:pl-[260px]">
-        <Header title="Dashboard">
-          <div className="flex items-center gap-4">
-            {/* Notifications Bell */}
-            <div className="relative" ref={notifRef}>
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50 active:scale-95"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl border border-slate-200 bg-white py-2 shadow-xl ring-1 ring-slate-900/5 z-50">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-4 pb-2">
-                    <h3 className="text-sm font-bold text-slate-900">Notifications</h3>
-                    <div className="flex gap-2">
-                      <button onClick={markAllAsRead} className="text-[10px] font-semibold text-indigo-600 hover:text-indigo-700">Mark all read</button>
-                      <button onClick={clearAllNotifications} className="text-[10px] font-semibold text-red-600 hover:text-red-700">Clear all</button>
-                    </div>
-                  </div>
-                  <div className="max-h-[400px] overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-500">No notifications</div>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => markAsRead(n.id)}
-                          className={`flex items-start gap-3 border-b border-slate-50 px-4 py-3 cursor-pointer transition hover:bg-slate-50 ${!n.read ? 'bg-indigo-50/30' : ''}`}
-                        >
-                          <div className="mt-1 shrink-0">
-                            {n.type === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-                            {n.type === 'info' && <Info className="h-4 w-4 text-blue-500" />}
-                            {n.type === 'warning' && <AlertCircle className="h-4 w-4 text-amber-500" />}
-                            {n.type === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className={`text-xs ${!n.read ? 'font-bold text-slate-900' : 'text-slate-600'}`}>{n.title}</p>
-                              {!n.read && <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" />}
-                            </div>
-                            <p className="mt-0.5 truncate text-[10px] text-slate-500">{n.message}</p>
-                            <span className="mt-1 block text-[9px] text-slate-400">{n.time}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </Header>
+        <Header title="Dashboard" />
 
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
           {/* Stats Cards */}
