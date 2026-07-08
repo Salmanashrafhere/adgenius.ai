@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -103,13 +103,21 @@ export default function CampaignsPage() {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Update local storage too
+    const campaignData = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    const updatedLocal = campaignData.filter(c => c.id !== id);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedLocal));
+
     showToast("Campaign deleted", "success");
   };
 
-  const filteredCampaigns = campaigns.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Performance: Memoize filtered campaigns list to avoid re-calculating on every render
+  const filteredCampaigns = useMemo(() =>
+    campaigns.filter(c =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  , [campaigns, searchQuery]);
 
   if (loading) return null;
 

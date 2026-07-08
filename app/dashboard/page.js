@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [stats, setStats] = useState({ totalCount: 0, totalAdsCount: 0 });
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -65,22 +66,40 @@ export default function DashboardPage() {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         
-        // Fetch campaigns from API
+        // Fetch recent campaigns from API (limited to 5 for dashboard performance)
         const fetchCampaigns = async () => {
           try {
-            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}`);
+            const response = await fetch(`/api/campaigns?userId=${parsedUser.id}&limit=5`);
             const data = await response.json();
             if (response.ok && data.success) {
               setCampaigns(data.campaigns);
+              setStats({
+                totalCount: data.totalCount ?? data.campaigns.length,
+                totalAdsCount: data.totalAdsCount ?? data.campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0)
+              });
             } else {
               // Fallback to local storage if API fails
               const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-              if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+              if (savedCampaigns) {
+                const parsed = JSON.parse(savedCampaigns);
+                setCampaigns(parsed.slice(0, 5));
+                setStats({
+                  totalCount: parsed.length,
+                  totalAdsCount: parsed.reduce((sum, c) => sum + (c.adsCount || 0), 0)
+                });
+              }
             }
           } catch (err) {
             console.error('Failed to fetch campaigns:', err);
             const savedCampaigns = localStorage.getItem('adgenius_campaigns');
-            if (savedCampaigns) setCampaigns(JSON.parse(savedCampaigns));
+            if (savedCampaigns) {
+              const parsed = JSON.parse(savedCampaigns);
+              setCampaigns(parsed.slice(0, 5));
+              setStats({
+                totalCount: parsed.length,
+                totalAdsCount: parsed.reduce((sum, c) => sum + (c.adsCount || 0), 0)
+              });
+            }
           } finally {
             setLoading(false);
           }
@@ -143,7 +162,18 @@ export default function DashboardPage() {
     if (!confirm('Are you sure you want to delete this campaign?')) return;
     const updated = campaigns.filter(c => c.id !== id);
     setCampaigns(updated);
-    localStorage.setItem('adgenius_campaigns', JSON.stringify(updated));
+
+    // Update local storage too
+    const savedCampaigns = JSON.parse(localStorage.getItem('adgenius_campaigns') || '[]');
+    const updatedSaved = savedCampaigns.filter(c => c.id !== id);
+    localStorage.setItem('adgenius_campaigns', JSON.stringify(updatedSaved));
+
+    // Update stats
+    setStats(prev => ({
+      totalCount: Math.max(0, prev.totalCount - 1),
+      totalAdsCount: Math.max(0, prev.totalAdsCount - (campaigns.find(c => c.id === id)?.adsCount || 0))
+    }));
+
     showToast("Campaign deleted successfully", "success");
   };
 
@@ -151,7 +181,18 @@ export default function DashboardPage() {
     showToast(`Preparing download for ${name}...`, "info");
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  // Performance: Memoize unread count to avoid re-calculating on every render
+  const unreadCount = useMemo(() =>
+    notifications.filter(n => !n.read).length
+  , [notifications]);
+
+  // Performance: Memoize stats cards to prevent re-renders when notifications or other state changes
+  const statsCards = useMemo(() => [
+    { label: "Total Campaigns", value: stats.totalCount.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Ads Generated", value: stats.totalAdsCount.toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+  ], [stats, user?.credits]);
 
   if (loading) {
     return (
@@ -229,12 +270,7 @@ export default function DashboardPage() {
         <main className="flex-1 space-y-8 px-4 py-8 sm:px-6 lg:px-8">
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: "Total Campaigns", value: campaigns.length.toString(), icon: Megaphone, color: "text-indigo-600", bg: "bg-indigo-50" },
-              { label: "Ads Generated", value: campaigns.reduce((sum, c) => sum + (c.adsCount || 0), 0).toString(), icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
-              { label: "Credits Remaining", value: (user?.credits || 10).toString(), icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
-              { label: "Success Rate", value: "98%", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
-            ].map((s) => (
+            {statsCards.map((s) => (
               <div key={s.label} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <div>
@@ -306,8 +342,14 @@ export default function DashboardPage() {
                     {campaigns.map((c) => (
                       <tr key={c.id} className="group transition hover:bg-slate-50/50">
                         <td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">{c.name}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{platformBadge(c.platform)}</td>
-                        <td className="whitespace-nowrap px-6 py-4">{statusBadge(c.status)}</td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={platformBadge(c.platform)}>
+                            {Array.isArray(c.platform) ? c.platform[0] : c.platform}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className={statusBadge(c.status)}>{c.status}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-600">{c.adsCount || 0} ads</td>
                         <td className="whitespace-nowrap px-6 py-4 text-slate-500">{new Date(c.createdAt || c.created_at).toLocaleDateString()}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-right">
